@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.grpc.examples.rateTrxUsdt";
+option java_outer_classname = "RateTrxUsdtProto";
+option objc_class_prefix = "RTG";
+
+package rateTrxUsdt;
+
+
+// Interface exported by the server.
+service RateTRX{
+    rpc GetRate(Coin) returns (Rate){}
+}
+
+message Coin{
+    string id=1;
+}
+
+message Rate{
+    string rate=1;
+}
+
