@@ -12,13 +12,28 @@ var packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 });
 var rate_proto = grpc.loadPackageDefinition(packageDefinition).rateTrxUsdt;
 
-function main() {
+async function clientMain() {
   var target = "localhost:50051";
   var client = new rate_proto.RateTRX(
     target,
     grpc.credentials.createInsecure()
   );
-  client.GetRate({ id: "tron" });
+
+  const clientGetRate = () => {
+    return new Promise<any>((resolve, reject) => {
+      client.GetRate(null, (error, response) => {
+        if (error) return reject()
+        resolve(response)
+      });
+    })
+  }
+
+  try {
+    let response = await clientGetRate()
+    console.log(response.rate)
+  } catch (err) {
+    console.log(err)
+  }
 }
 
-main();
+clientMain();

@@ -10,12 +10,10 @@ package rateTrxUsdt;
 
 // Interface exported by the server.
 service RateTRX{
-    rpc GetRate(Coin) returns (Rate){}
+    rpc GetRate(Empty) returns (Rate){}
 }
 
-message Coin{
-    string id=1;
-}
+message Empty{}
 
 message Rate{
     string rate=1;

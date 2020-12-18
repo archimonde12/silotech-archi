@@ -1,18 +1,15 @@
 {
-  "name": "grpc-rate-server",
+  "name": "chat-app",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "server": "ts-node ./src/grpc/rate-server.ts",
-    "client": "ts-node ./src/grpc/rate-client.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@grpc/grpc-js": "^1.2.2",
     "@grpc/proto-loader": "^0.5.4",
     "@sentry/node": "^5.12.3",
     "@supercharge/request-ip": "^1.1.2",
