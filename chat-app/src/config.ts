@@ -1,3 +1,4 @@
-import {config} from "dotenv"
-config()
-export const mongoUri=""
+import { config } from "dotenv";
+config();
+
+export const mongoUri = "";
