@@ -1,14 +1,13 @@
 import { chatRooms } from "../../../fakeData/chatroom";
 import { message } from "../../../fakeData/message";
 import { pubsub } from "../subscriptions";
+import {chat_app_public_room_create} from "./chat_app_public_room_create"
 const Mutation = {
   //public room
-  chat_app_public_room_create_room: (parent, args, context, info) => {
-    const { slug, title, member } = args;
-    return chatRooms.addRoom(slug);
-  },
-  chat_app_public_room_delete_room: () => {},
-  chat_app_public_room_join_room: () => {},
+  chat_app_public_room_create,
+  chat_app_public_room_delete: () => {},
+  chat_app_public_room_join: () => {},
+  chat_app_public_room_quit: () => {},
   chat_app_public_room_add_member: () => {},
   chat_app_public_room_remove_member: () => {},
   chat_app_public_room_block_member: () => {},
@@ -18,7 +17,7 @@ const Mutation = {
   chat_app_send_message: (parent, args, context, info) => {
     const { chatRoomId, slug, content, tag } = args;
     let newMessage = message.addMessage(chatRoomId, content, slug);
-    pubsub.publish("test", { chat_app_listen_chat_room: newMessage });
+    pubsub.publish("COMMENT_ADDED", { chat_app_listen_chat_room: newMessage });
     console.log(newMessage);
     return newMessage;
   },

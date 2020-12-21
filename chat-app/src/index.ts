@@ -1,26 +1,10 @@
-import { ApolloServer } from "apollo-server";
-import { typeDefs, resolvers } from "./graphql";
 
-const initApollo = () => {
-  const server = new ApolloServer({
-    typeDefs,
-    resolvers,
-    context: (req) => ({
-      ...req,
-    }),
-  });
+import { initApollo} from "./apollo";
+import { connectMongoDb } from "./mongo"
 
-  server.listen().then(({ url }) => {
-    console.log(`
-                Server is running!
-                Listening on ${url}
-                Explore at https://studio.apollographql.com/dev
-              `);
-  });
-};
-
-const start = () => {
-  initApollo();
+const start = async () => {
+  await connectMongoDb();
+  await initApollo();
 };
 
 start();

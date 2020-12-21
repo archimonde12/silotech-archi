@@ -3,7 +3,7 @@ import { Users } from "./user";
 export let message = (() => {
   let data = [
     {
-      chatRoomId: 1,
+      chatRoomId: "1",
       content: "Hello",
       owner: Users[1],
     },

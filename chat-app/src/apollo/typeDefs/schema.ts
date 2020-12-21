@@ -1,6 +1,9 @@
 import { gql } from "apollo-server";
 
 export const typeDefs = gql`
+  scalar ObjectID
+  scalar Date
+
   enum FriendRequestStatus {
     pending
     accept
@@ -9,12 +12,11 @@ export const typeDefs = gql`
   }
 
   type ChatRoom {
-    id: ID!
+    _id: ObjectID!
     createBy: User
     title: String
-    member: [User!]
-    blockMember: [User]
-    createAt: Int
+    blockMembers: [User]
+    createdAt: Date
   }
 
   type PrivateRoom {
@@ -29,6 +31,7 @@ export const typeDefs = gql`
     slug: String!
     friend: [String]
     block: [String]
+    chatRooms:[ObjectID]
   }
 
   type Message {
@@ -59,16 +62,20 @@ export const typeDefs = gql`
 
   type Mutation {
     # public room
-    chat_app_public_room_create_room(
+    chat_app_public_room_create(
       slug: String!
       title: String!
-      member: [String!]
+      member: [String!]!
     ): ChatRoom!
-    chat_app_public_room_delete_room(
+    chat_app_public_room_delete(
       slug: String!
       chatRoomId: ID!
-    ): ResultMessage!
-    chat_app_public_room_join_room(slug: String!, chatRoomId: ID!): ChatRoom!
+    ): ChatRoom!
+    chat_app_public_room_quit(
+      slug: String!
+      chatRoomId: ID!
+    ): ChatRoom!
+    chat_app_public_room_join(slug: String!, chatRoomId: ID!): ChatRoom!
     chat_app_public_room_add_member(
       slug: String!
       member: [String!]
