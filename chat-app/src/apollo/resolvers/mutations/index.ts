@@ -1,13 +1,16 @@
 import { chatRooms } from "../../../fakeData/chatroom";
 import { message } from "../../../fakeData/message";
 import { pubsub } from "../subscriptions";
-import {chat_app_public_room_create} from "./chat_app_public_room_create"
+import { chat_app_public_room_create } from "./chat_app_public_room_create";
+import { chat_app_public_room_delete } from "./chat_app_public_room_delete";
+import { chat_app_public_room_join } from "./chat_app_public_room_join";
+import { chat_app_public_room_quit } from "./chat_app_public_room_quit";
 const Mutation = {
   //public room
   chat_app_public_room_create,
-  chat_app_public_room_delete: () => {},
-  chat_app_public_room_join: () => {},
-  chat_app_public_room_quit: () => {},
+  chat_app_public_room_delete,
+  chat_app_public_room_join,
+  chat_app_public_room_quit,
   chat_app_public_room_add_member: () => {},
   chat_app_public_room_remove_member: () => {},
   chat_app_public_room_block_member: () => {},
