@@ -4,6 +4,8 @@ export const typeDefs = gql`
   scalar ObjectID
   scalar Date
 
+  union Result = ChatRoom | Message | InboxMessage
+
   enum FriendRequestStatus {
     pending
     accept
@@ -13,17 +15,25 @@ export const typeDefs = gql`
 
   type ChatRoom {
     _id: ObjectID!
-    createBy: User
+    createdBy: User
     title: String
+    totalMembers:Int
     blockMembers: [User]
     createdAt: Date
+    updateAt:Date
   }
 
-  type PrivateRoom {
-    id: ID!
-    member1: User!
-    member2: User!
-    createAt: Int
+  type ChatRoomDetails{
+    data:ChatRoom
+    member:[User]
+  }
+
+  type InboxRoom{
+    _id: ObjectID!
+    pairName:String
+    members:[String]
+    createdAt:Date
+    updateAt:Date
   }
 
   type User {
@@ -37,7 +47,16 @@ export const typeDefs = gql`
   type Message {
     chatRoomId: ID!
     content: String
-    owner: User!
+    createdBy: User!
+    tag: [User]
+    createdAt:Date
+  }
+
+  type InboxMessage {
+    inboxRoomId: ID!
+    content: String
+    createdBy: User!
+    createdAt:Date
     tag: [User]
   }
 
@@ -51,13 +70,15 @@ export const typeDefs = gql`
 
   type ResultMessage {
     success: Boolean!
-    content: String
+    message: String
+    data:Result
   }
 
   type Query {
-    chat_app_get_all_message(chatRoomId: ID!): [Message]
+    chat_app_get_all_message(slug:String!,chatRoomId: ID!): [Message]
     chat_app_show_all_user: [User]
     chat_app_show_all_chatroom: [ChatRoom]
+    chat_app_show_chatroom_details(chatRoomId: ID!): ChatRoomDetails
   }
 
   type Mutation {
@@ -66,23 +87,28 @@ export const typeDefs = gql`
       slug: String!
       title: String!
       member: [String!]!
-    ): ChatRoom!
+    ): ResultMessage!
+
     chat_app_public_room_delete(
       slug: String!
       chatRoomId: ID!
-    ): ChatRoom!
-    chat_app_public_room_quit(
+    ): ResultMessage!
+
+    chat_app_public_room_leave(
       slug: String!
       chatRoomId: ID!
-    ): ChatRoom!
+    ): ResultMessage!
+
     chat_app_public_room_join(slug: String!, chatRoomId: ID!): ChatRoom!
+
     chat_app_public_room_add_member(
-      slug: String!
+      master: String!
       member: [String!]
       chatRoomId: ID!
     ): ChatRoom!
+
     chat_app_public_room_remove_member(
-      slug: String!
+      master: String!
       member: [String!]
       chatRoomId: ID!
     ): ChatRoom!
@@ -91,15 +117,26 @@ export const typeDefs = gql`
       blockMember: [String!]
       chatRoomId: ID!
     ): ChatRoom!
+
     # private room
-    chat_app_private_room_create(slug1: String!, slug2: String!): PrivateRoom!
+
+    chat_app_inbox_get_room(sender: String!, reciver: String!): InboxRoom!
+
     # send message
+
     chat_app_send_message(
       chatRoomId: ID!
       slug: String!
       content: String!
       tag: [String]
-    ): Message!
+    ): ResultMessage!
+
+    chat_app_send_inbox_message(
+      inboxRoomId: ID!
+      slug: String!
+      content: String!
+    ): ResultMessage!
+
     #friend request
     chat_app_friend_request_send(
       sender: String!

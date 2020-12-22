@@ -4,7 +4,7 @@ type Message = {
     _id?: ObjectID
     chatRoomId: ObjectID
     content: string
-    createBy: ObjectID
+    createBy: string
     createdAt: Date
 }
 const MessageIndexes: IndexSpecification[] = [

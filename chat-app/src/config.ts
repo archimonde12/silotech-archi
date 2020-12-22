@@ -9,3 +9,11 @@ export const graphqlPort = process.env.GRAPHQL_PORT
 
 if (!process.env.GRPC_PORT) throw new Error(`grpc port must be provided`)
 export const grpcPort = process.env.GRPC_PORT
+
+if (!process.env.SECRET_COMBINE_PAIR_KEY) throw new Error(`grpc port must be provided`)
+export const secretCombinePairKey = process.env.SECRET_COMBINE_PAIR_KEY
+
+export const errorMessage={
+    someUserNotExistInDataBase:`Someone not exist in database!`,
+    userNotExistInDataBase:(slug)=>`${slug} not exist in database!`
+}

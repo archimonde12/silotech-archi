@@ -1,14 +1,24 @@
 import { IndexSpecification, ObjectID } from "mongodb";
 
 type ChatRoom = {
-    _id?: ObjectID
     title: string
-    createBy: ObjectID
-    block: [ObjectID]
+    createdBy: string
+    totalMembers:number
+    blockMembers: [string]
     createdAt: Date
     updateAt:Date
-    type:String
 }
+
+type ChatRoomInMongoDB = {
+    _id: ObjectID
+    title: string
+    createdBy: string
+    totalMembers:number
+    blockMembers: [string]
+    createdAt: Date
+    updateAt:Date
+}
+
 const ChatRoomIndexes: IndexSpecification[] = [
     { key: { title: 1, createBy: 1,updateAt:1} },
 ]

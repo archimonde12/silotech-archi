@@ -1,20 +1,22 @@
 import { IndexSpecification, ObjectID } from "mongodb";
 
 type User = {
-    userName: string
-    friend: [ObjectID]
-    block: [ObjectID]
+    slug: string
+    friend: [string]
+    block: [string]
     chatRooms:[ObjectID]
+    inboxRooms:[ObjectID]
     createdAt: Date
 }
 
 type UserInMongo={
     _id: ObjectID
-    userName: string
+    slug: string
     friend: [ObjectID]
     block: [ObjectID]
     createdAt: Date
     chatRooms:[ObjectID]
+    inboxRooms:[ObjectID]
 }
 
 export {

@@ -3,6 +3,7 @@ import { mongoUri } from "./config"
 import { MessageIndexes } from "./models/Message";
 import { ChatRoomIndexes } from "./models/chatRoom";
 import { FriendRequestIndexes } from "./models/FriendRequest";
+import { InboxMessageIndexes } from "./models/inboxMessage";
 
 let client: MongoClient
 let db: Db
@@ -10,8 +11,10 @@ let db: Db
 const collectionNames = {
     friendRequests:'friendRequests',
     messages:'messages',
+    inboxMessages:`inboxMessages`,
     chatRooms:'chatRooms',
-    users:'users'
+    users:'users',
+    inboxRooms:'inboxRooms'
 }
 
 const connectMongoDb = async () => {
@@ -54,6 +57,7 @@ const connectMongoDb = async () => {
         await Promise.all([
             db.collection(collectionNames.friendRequests).createIndexes(FriendRequestIndexes),
             db.collection(collectionNames.messages).createIndexes(MessageIndexes),
+            db.collection(collectionNames.inboxMessages).createIndexes(InboxMessageIndexes),
             db.collection(collectionNames.chatRooms).createIndexes(ChatRoomIndexes)
         ])
         console.log(`Mongodb: connected`)
