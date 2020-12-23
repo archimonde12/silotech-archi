@@ -22,7 +22,7 @@ const chat_app_send_inbox_message = async (
     const session = client.startSession()
     session.startTransaction()
     try {
-        //Check is chatroom exist
+        //Check is inboxroom exist
         const foundInboxRoom = await db
             .collection(collectionNames.inboxRooms)
             .findOne({ _id: objectInboxId });
@@ -65,6 +65,5 @@ const chat_app_send_inbox_message = async (
         throw e;
     }
 }
-
 
 export { chat_app_send_inbox_message }

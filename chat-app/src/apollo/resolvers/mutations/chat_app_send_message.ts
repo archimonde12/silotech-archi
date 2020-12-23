@@ -31,7 +31,7 @@ const chat_app_send_message = async (
             //check user is a member
             let checkIsOldMemberQuery = { slug, chatRooms: { $all: [foundChatRoom._id] } }
             let checkIsOldMemberRes = await db.collection(collectionNames.users).findOne(checkIsOldMemberQuery)
-            console.log({ checkIsOldMemberQuery })
+            console.log({ checkIsOldMemberRes })
             if (checkIsOldMemberRes) {
                 //insert new message document in mongodb
                 const now = new Date()
@@ -44,11 +44,11 @@ const chat_app_send_message = async (
                 let { insertedId } = await db.collection(collectionNames.messages).insertOne(insertDoc)
                 let data = { ...insertDoc, _id: insertedId }
                 //update document in chatRooms
-               await db.collection(collectionNames.chatRooms).updateOne({ _id: objectChatRoomId }, { $set: { updateAt: now } })
+                await db.collection(collectionNames.chatRooms).updateOne({ _id: objectChatRoomId }, { $set: { updateAt: now } })
 
                 await session.commitTransaction()
                 session.endSession()
-                return { success: true, message: `send message success!`, data}
+                return { success: true, message: `send message success!`, data }
             }
             await session.abortTransaction()
             session.endSession()

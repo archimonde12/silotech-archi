@@ -45,7 +45,7 @@ export const typeDefs = gql`
   }
 
   type Message {
-    chatRoomId: ID!
+    chatRoomId: ObjectID!
     content: String
     createdBy: User!
     tag: [User]
@@ -53,7 +53,7 @@ export const typeDefs = gql`
   }
 
   type InboxMessage {
-    inboxRoomId: ID!
+    inboxRoomId: ObjectID!
     content: String
     createdBy: User!
     createdAt:Date
@@ -75,10 +75,15 @@ export const typeDefs = gql`
   }
 
   type Query {
-    chat_app_get_all_message(slug:String!,chatRoomId: ID!): [Message]
+    # Message
+    chat_app_get_all_message(slug:String!,chatRoomId: ObjectID!): [Message]
+    chat_app_get_all_inbox_message(slug:String!,inboxRoomId: ObjectID!): [InboxMessage]
+    # Chatroom and InboxRoom
+    chat_app_show_all_public_chatrooms(slug:String!): [ChatRoom]
+    chat_app_show_all_my_chatrooms(slug:String!): [ChatRoom]
+    chat_app_show_all_inboxroom(slug:String!): [InboxRoom]
+    chat_app_show_chatroom_details(chatRoomId: ObjectID!): ChatRoomDetails
     chat_app_show_all_user: [User]
-    chat_app_show_all_chatroom: [ChatRoom]
-    chat_app_show_chatroom_details(chatRoomId: ID!): ChatRoomDetails
   }
 
   type Mutation {
@@ -91,7 +96,7 @@ export const typeDefs = gql`
 
     chat_app_public_room_delete(
       slug: String!
-      chatRoomId: ID!
+      chatRoomId: ObjectID!
     ): ResultMessage!
 
     chat_app_public_room_leave(
@@ -99,23 +104,23 @@ export const typeDefs = gql`
       chatRoomId: ID!
     ): ResultMessage!
 
-    chat_app_public_room_join(slug: String!, chatRoomId: ID!): ChatRoom!
+    chat_app_public_room_join(slug: String!, chatRoomId: ObjectID!): ChatRoom!
 
     chat_app_public_room_add_member(
       master: String!
       member: [String!]
-      chatRoomId: ID!
+      chatRoomId: ObjectID!
     ): ChatRoom!
 
     chat_app_public_room_remove_member(
       master: String!
       member: [String!]
-      chatRoomId: ID!
+      chatRoomId: ObjectID!
     ): ChatRoom!
     chat_app_public_room_block_member(
       slug: String!
       blockMember: [String!]
-      chatRoomId: ID!
+      chatRoomId: ObjectID!
     ): ChatRoom!
 
     # private room
@@ -125,14 +130,14 @@ export const typeDefs = gql`
     # send message
 
     chat_app_send_message(
-      chatRoomId: ID!
+      chatRoomId: ObjectID!
       slug: String!
       content: String!
       tag: [String]
     ): ResultMessage!
 
     chat_app_send_inbox_message(
-      inboxRoomId: ID!
+      inboxRoomId: ObjectID!
       slug: String!
       content: String!
     ): ResultMessage!

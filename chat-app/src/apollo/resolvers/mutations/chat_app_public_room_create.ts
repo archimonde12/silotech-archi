@@ -39,7 +39,7 @@ const chat_app_public_room_create = async (root: any, args: any, ctx: any): Prom
         //End transcation
         await session.commitTransaction()
         session.endSession()
-        return { success: true, message: `create new room succes!`, data:result}
+        return { success: true, message: `create new room success!`, data:result}
     } catch (e) {
         if (session.inTransaction()) {
             await session.abortTransaction()

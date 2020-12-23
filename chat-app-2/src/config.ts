@@ -13,6 +13,10 @@ export const grpcPort = process.env.GRPC_PORT
 if (!process.env.SECRET_COMBINE_PAIR_KEY) throw new Error(`grpc port must be provided`)
 export const secretCombinePairKey = process.env.SECRET_COMBINE_PAIR_KEY
 
+if (!process.env.ADMIN_KEY) throw new Error(`admin key must be provided`)
+export const ADMIN_KEY = process.env.ADMIN_KEY
+
+
 export const errorMessage={
     someUserNotExistInDataBase:`Someone not exist in database!`,
     userNotExistInDataBase:(slug)=>`${slug} not exist in database!`

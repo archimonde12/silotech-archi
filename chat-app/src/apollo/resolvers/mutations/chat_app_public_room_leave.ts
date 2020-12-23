@@ -29,20 +29,26 @@ const chat_app_public_room_leave = async (
       .findOne({ _id: objectChatRoomId });
     console.log({ foundChatRoom });
     if (foundChatRoom) {
-      //check user is a member
-      let checkIsOldMemberQuery = { slug, chatRooms: { $all: [foundChatRoom._id] } }
-      let checkIsOldMemberRes = await db.collection(collectionNames.users).findOne(checkIsOldMemberQuery)
-      if (checkIsOldMemberRes) {
-        //Update mongo data
-        await db.collection(collectionNames.users).updateOne({ slug }, { $pull: { chatRooms: objectChatRoomId } })
-        await db.collection(collectionNames.chatRooms).updateOne({ _id: objectChatRoomId }, { $inc: { totalMembers: -1 } })
-        await session.commitTransaction()
+      //Check slug is creater of this room
+      if (foundChatRoom.createdBy.slug != slug) {
+        //check user is a member
+        let checkIsOldMemberQuery = { slug, chatRooms: { $all: [foundChatRoom._id] } }
+        let checkIsOldMemberRes = await db.collection(collectionNames.users).findOne(checkIsOldMemberQuery)
+        if (checkIsOldMemberRes) {
+          //Update mongo data
+          await db.collection(collectionNames.users).updateOne({ slug }, { $pull: { chatRooms: objectChatRoomId } })
+          await db.collection(collectionNames.chatRooms).updateOne({ _id: objectChatRoomId }, { $inc: { totalMembers: -1 } })
+          await session.commitTransaction()
+          session.endSession()
+          return { success: true, message: `Leave room ${chatRoomId} success!` }
+        }
+        await session.abortTransaction()
         session.endSession()
-        return { success: true, message: `Leave room ${chatRoomId} success!` }
+        return { success: false, message: `${slug} is not a member in this room` }
       }
       await session.abortTransaction()
       session.endSession()
-      return { success: false, message: `${slug} is not a member in this room` }
+      return { success: false, message: `${slug} is master this chatroom. Canot leave` };
     }
     await session.abortTransaction()
     session.endSession()
