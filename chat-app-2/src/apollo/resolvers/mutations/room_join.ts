@@ -54,7 +54,7 @@ const room_join = async (root: any, args: any, ctx: any): Promise<any> => {
       slug: newMemberSlug,
       roomId: objectRoomId,
       joinedAt: now,
-      role: MemberRole.member,
+      role: MemberRole.member.id,
     };
     const { insertedId } = await db
       .collection(collectionNames.members)

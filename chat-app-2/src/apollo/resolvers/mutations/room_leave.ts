@@ -49,7 +49,7 @@ const room_leave = async (root: any, args: any, ctx: any): Promise<any> => {
       throw new Error(`${memberSlug} is not a member`);
     }
     //Check master
-    if (memberData.role === MemberRole.master) {
+    if (memberData.role === MemberRole.master.id) {
       await session.abortTransaction();
       session.endSession();
       throw new Error(`${memberSlug} is master. Cannot leave`);

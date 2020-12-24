@@ -1,9 +1,18 @@
 import { IndexSpecification, ObjectID } from "mongodb";
 
+const MessageTypes={
+  plaintext:{
+    id:'0',
+    name:'plaintext'
+  },
+
+}
+
 type Message = {
   roomId: ObjectID;
   sentAt: Date;
-  content: string;
+  type: string,
+  data: object,
   createdBy: string;
 };
 
@@ -19,4 +28,4 @@ const MessageIndexes: IndexSpecification[] = [
   { key: { roomId: 1, sentAt: -1, createdBy: 1 } },
 ];
 
-export { Message, MessageInMongo, MessageIndexes };
+export { Message, MessageInMongo, MessageIndexes,MessageTypes };

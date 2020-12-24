@@ -1,8 +1,18 @@
 import { IndexSpecification, ObjectID } from "mongodb";
 
 const MemberRole = {
-    member: 'member',
-    master: 'master'
+    admin:{
+        id:'0',
+        name:'admin'
+    },
+    master: {
+        id: '1',
+        name: 'master'
+    },
+    member: {
+        id: '2',
+        name: 'member'                         
+    },
 }
 
 type Member = {

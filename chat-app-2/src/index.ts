@@ -1,12 +1,13 @@
 
 import { initApollo} from "./apollo";
-import { connectMongoDb } from "./mongo"
-import {createFakeUserToMongo} from "./fakeData/user"
+import { connectMongoDb, initMongodb } from "./mongo"
+
 
 const start = async () => {
   await connectMongoDb();
   await initApollo();
-  await createFakeUserToMongo()
+  
+  await initMongodb()
 };
 
 start();

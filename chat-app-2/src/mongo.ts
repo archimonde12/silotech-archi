@@ -4,15 +4,21 @@ import { MessageIndexes } from "./models/Message";
 import { RoomIndexes } from "./models/Room";
 import { MemberIndexes } from "./models/Member";
 import { UserIndexes } from "./models/User";
+import { createMemberRoleToMongo } from "./initMongo/memberRole";
+import {createFakeUserToMongo} from "./initMongo/user"
+import { createMessageTypeToMongo } from "./initMongo/messageType";
 
 let client: MongoClient
 let db: Db
 
 const collectionNames = {
     messages: 'messages',
+    messageType: 'messageType',
     rooms: 'rooms',
+    roomType: 'roomType',
     users: 'users',
-    members: 'members'
+    members: 'members',
+    memberRoles: 'memberRoles'
 }
 
 const connectMongoDb = async () => {
@@ -67,9 +73,16 @@ const connectMongoDb = async () => {
     }
 }
 
+const initMongodb = async () => {
+    await createMemberRoleToMongo()
+    await createFakeUserToMongo()
+    await createMessageTypeToMongo()
+}
+
 export {
     client,
     db,
     connectMongoDb,
+    initMongodb,
     collectionNames
 }

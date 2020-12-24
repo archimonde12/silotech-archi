@@ -47,6 +47,8 @@ const room_delete = async (root: any, args: any, ctx: any): Promise<any> => {
     await db
       .collection(collectionNames.members)
       .deleteMany({ roomId: objectRoomId });
+    //Delete all message
+    await db.collection(collectionNames.messages).deleteMany({ roomId: objectRoomId })
     await session.commitTransaction();
     session.endSession();
     return { success: true, message: `delete this room success!`, data: null };

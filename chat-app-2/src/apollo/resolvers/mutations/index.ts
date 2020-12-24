@@ -5,6 +5,7 @@ import { room_leave } from "./room_leave"
 import { room_add } from "./room_add"
 import { room_remove } from "./room_remove"
 import { message_send } from "./message_send"
+import {inbox_create} from "./inbox_create"
 
 const Mutation = {
     //room
@@ -14,6 +15,7 @@ const Mutation = {
     room_leave,
     room_add,
     room_remove,
+    inbox_create,
     //message
     message_send
 };

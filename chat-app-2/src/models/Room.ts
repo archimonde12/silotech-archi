@@ -5,7 +5,7 @@ const RoomTypes = {
     public: 'public',
     global: 'global'
 }
-
+ 
 type Room = {
     title: string
     createdBy: string

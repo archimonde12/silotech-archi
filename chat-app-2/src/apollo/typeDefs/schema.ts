@@ -48,10 +48,11 @@ export const typeDefs = gql`
 
   type Query {
     # Message
-    get_messages(slug: String!, roomId: ObjectID!, limit: Int): [Message]
+    get_messages(slug: String, roomId: ObjectID!, limit: Int): [Message]
     # Room
-    get_room_details(roomId: ObjectID!, adminKey: String!): Room
+    get_room_details(roomId: ObjectID!): Room
     get_all_rooms(slug: String!): [Room]
+    get_other_public_rooms(slug:String!):[Room]
     # Member
     get_all_members(roomId: ObjectID!): [Member]
   }
@@ -64,7 +65,7 @@ export const typeDefs = gql`
       startMemberSlugs: [String]!
       roomType: RoomType
     ): ResultMessage!
-    inbox_create(senderSlug: String!, reciverSlug: String!): ResultMessage!
+    inbox_create(senderSlug: String!, reciverSlug: String!): Room!
     room_delete(createrSlug: String!, roomId: ObjectID!): ResultMessage!
     room_join(newMemberSlug: String!, roomId: ObjectID!): ResultMessage!
     room_leave(memberSlug: String!, roomId: ObjectID!): ResultMessage!
