@@ -38,6 +38,16 @@ const room_join = async (root: any, args: any, ctx: any): Promise<any> => {
       session.endSession();
       throw new Error("Cannot join! Because this room is inboxRoom ");
     }
+    //Check block
+    let blockMemberData = await db
+      .collection(collectionNames.blockMembers)
+      .findOne({ $and: [{ roomId: objectRoomId }, { slug: newMemberSlug }] });
+    console.log({ blockMemberData });
+    if (blockMemberData) {
+      await session.abortTransaction();
+      session.endSession();
+      throw new Error(`${newMemberSlug} has been blocked`);
+    }
     //Check member
     let memberData = await db
       .collection(collectionNames.members)
@@ -48,6 +58,7 @@ const room_join = async (root: any, args: any, ctx: any): Promise<any> => {
       session.endSession();
       throw new Error(`${newMemberSlug} already a member`);
     }
+
     //Add new Member Doc
     const now = new Date();
     const insertNewMemberDoc = {

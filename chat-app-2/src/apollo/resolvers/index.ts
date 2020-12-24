@@ -7,19 +7,31 @@ export const resolvers = {
   Mutation,
   Subscription,
   Result: {
-    __resolveType(obj, context, info){
-      if(obj.title){
-        return 'Room';
+    __resolveType(obj, context, info) {
+      if (obj.title) {
+        return "Room";
       }
 
-      if(obj.content){
-        return 'Message';
+      if (obj.data) {
+        return "Message";
       }
 
-      if(obj.role){
-        return 'Member'
+      if (obj.role) {
+        return "Member";
       }
-      
+
+      return null;
+    },
+  },
+  MessageData: {
+    __resolveType(obj, context, info) {
+      if (obj.betId) {
+        return "BetMessData";
+      }
+
+      if (obj.content) {
+        return "PlainTextMessData";
+      }
       return null;
     },
   },

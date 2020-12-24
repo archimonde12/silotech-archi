@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { ADMIN_KEY } from "../../../config";
 import { MemberRole } from "../../../models/Member";
+import { MessageTypes } from "../../../models/Message";
 import { client, collectionNames, db } from "../../../mongo";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
@@ -8,7 +9,7 @@ const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======MESSAGE SEND=====");
   //Get arguments
   console.log({ args });
-  const { sender, roomId, content } = args;
+  const { sender, roomId, type, data } = args;
   const objectRoomId = new ObjectId(roomId);
   //Start transcation
   const session = client.startSession();
@@ -39,7 +40,8 @@ const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
     const insertNewMessageDoc = {
       sentAt: now,
       roomId: objectRoomId,
-      content,
+      type,
+      data,
       createdBy: {
         slug: sender,
       },
@@ -54,7 +56,7 @@ const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
         .collection(collectionNames.rooms)
         .updateOne(
           { _id: objectRoomId },
-          { $set: { updatedAt: now, lastMess: content } }
+          { $set: { updatedAt: now, lastMess: data } }
         );
     }
     await session.commitTransaction();

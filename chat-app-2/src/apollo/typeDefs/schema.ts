@@ -8,7 +8,20 @@ export const typeDefs = gql`
     global
     public
   }
+
+  enum MessageType {
+    plaintext
+    bet
+  }
+
   union Result = Room | Message | Member
+  union MessageData = PlainTextMessData | BetMessData
+
+  input MessData {
+    title: String
+    betId: String
+    content: String
+  }
 
   type User {
     slug: String
@@ -36,7 +49,8 @@ export const typeDefs = gql`
   type Message {
     roomId: ObjectID
     sentAt: Date
-    content: String
+    type: MessageType
+    data: MessageData
     createdBy: User
   }
 
@@ -46,13 +60,22 @@ export const typeDefs = gql`
     data: Result
   }
 
+  type PlainTextMessData {
+    content: String
+  }
+
+  type BetMessData {
+    title: String
+    betId: String
+  }
+
   type Query {
     # Message
     get_messages(slug: String, roomId: ObjectID!, limit: Int): [Message]
     # Room
     get_room_details(roomId: ObjectID!): Room
     get_all_rooms(slug: String!): [Room]
-    get_other_public_rooms(slug:String!):[Room]
+    get_other_public_rooms(slug: String!): [Room]
     # Member
     get_all_members(roomId: ObjectID!): [Member]
   }
@@ -79,11 +102,23 @@ export const typeDefs = gql`
       roomId: ObjectID!
       removeMemberSlugs: [String!]
     ): ResultMessage!
+    room_block(
+      master: String!
+      roomId: ObjectID!
+      blockMembersSlugs: [String!]
+    ): ResultMessage!
     # Message
     message_send(
       sender: String!
       roomId: ObjectID!
-      content: String!
+      type: MessageType
+      data: MessData
+    ): ResultMessage!
+
+    message_delete(
+      master: String!
+      roomId: ObjectID!
+      messageId: ObjectID!
     ): ResultMessage!
   }
 

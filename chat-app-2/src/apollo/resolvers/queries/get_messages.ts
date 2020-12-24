@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { RoomTypes } from "../../../models/Room";
 import { collectionNames, db } from "../../../mongo";
 
 const get_messages = async (root: any, args: any, ctx: any): Promise<any> => {
@@ -21,7 +22,7 @@ const get_messages = async (root: any, args: any, ctx: any): Promise<any> => {
       .collection(collectionNames.members)
       .findOne({ $and: [{ roomId: objectRoomId }, { slug }] });
     console.log({ memberData });
-    if (!memberData) {
+    if (!memberData && RoomData.type === RoomTypes.inbox) {
       throw new Error(`${slug} is not a member`);
     }
     //Query Message
@@ -31,6 +32,7 @@ const get_messages = async (root: any, args: any, ctx: any): Promise<any> => {
       .limit(limit)
       .sort({ sentAt: -1 })
       .toArray();
+    allMessage.sort((a, b) => a.sentAt - b.sentAt);
     return allMessage;
   } catch (e) {
     throw e;

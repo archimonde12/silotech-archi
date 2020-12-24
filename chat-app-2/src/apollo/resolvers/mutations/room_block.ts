@@ -3,13 +3,17 @@ import { ADMIN_KEY } from "../../../config";
 import { MemberRole } from "../../../models/Member";
 import { client, collectionNames, db } from "../../../mongo";
 
-const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
-  console.log("======ROOM ADD=====");
+const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
+  console.log("======ROOM BLOCK=====");
   //Get arguments
   console.log({ args });
-  const { master, roomId, addMemberSlugs } = args;
+  const { master, roomId, blockMembersSlugs } = args;
   const objectRoomId = new ObjectId(roomId);
-  const totalAddMember = addMemberSlugs.length;
+  const totalMemberBlock = blockMembersSlugs.length;
+  //Check master in block list
+  if (blockMembersSlugs.includes(master)) {
+    throw new Error("Cannot remove the master");
+  }
   //Start transcation
   const session = client.startSession();
   session.startTransaction();
@@ -25,11 +29,6 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
       throw new Error("RoomId not exist");
     }
     //Check room type
-    if (RoomData.type === `inbox`) {
-      await session.abortTransaction();
-      session.endSession();
-      throw new Error("Cannot add! Because this room is inboxRoom ");
-    }
     if (RoomData.type === `global` && master !== ADMIN_KEY) {
       await session.abortTransaction();
       session.endSession();
@@ -41,58 +40,52 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
       session.endSession();
       throw new Error(`${master} is not a master of this room`);
     }
-    //Check addMemberSlugs exist
-    let checkSlug = await db
-      .collection(collectionNames.users)
-      .find({ slug: { $in: addMemberSlugs } })
+    //Check member
+    let checkOldMemFilter = {
+      $and: [{ roomId: objectRoomId }, { slug: { $in: blockMembersSlugs } }],
+    };
+    let checkOldMembers = await db
+      .collection(collectionNames.members)
+      .find(checkOldMemFilter)
       .toArray();
-    console.log({ checkSlug });
-    if (checkSlug.length !== totalAddMember) {
+    console.log({ checkOldMembers });
+    if (checkOldMembers.length !== totalMemberBlock) {
       await session.abortTransaction();
       session.endSession();
       throw new Error(
         `${
-          totalAddMember - checkSlug.length
-        } member(s) not exist in user database`
+          totalMemberBlock - checkOldMembers.length
+        } user(s) are not a member in this room`
       );
     }
-    //Check member
-    let checkOldMembers = await db
+    let { deletedCount } = await db
       .collection(collectionNames.members)
-      .find({
-        $and: [{ roomId: objectRoomId }, { slug: { $in: addMemberSlugs } }],
-      })
-      .toArray();
-    console.log({ checkOldMembers });
-    if (checkOldMembers.length > 0) {
-      await session.abortTransaction();
-      session.endSession();
-      throw new Error(`some one has already been a member`);
-    }
-    //Create new member doc
-    const now = new Date();
-    let insertMemberDocs = addMemberSlugs.map((memberSlug) => ({
-      slug: memberSlug,
-      roomId: objectRoomId,
-      joinedAt: now,
-      role: MemberRole.member.id,
-    }));
-    let insertRes = await db
-      .collection(collectionNames.members)
-      .insertMany(insertMemberDocs);
-    console.log(insertRes);
+      .deleteMany(checkOldMemFilter);
+    console.log({ deletedCount });
     //Update room doc
+    if (!deletedCount) {
+      throw new Error("fail to delete");
+    }
     await db
       .collection(collectionNames.rooms)
       .updateOne(
         { _id: objectRoomId },
-        { $inc: { totalMembers: totalAddMember } }
+        { $inc: { totalMembers: -deletedCount } }
       );
+    //Add block member
+    const insertBlockMemberDocs = blockMembersSlugs.map((slug) => ({
+      slug,
+      roomId: objectRoomId,
+    }));
+    let insertRes = await db
+      .collection(collectionNames.blockMembers)
+      .insertMany(insertBlockMemberDocs);
+    console.log(`${insertRes.insertedCount} docs has been added!`);
     await session.commitTransaction();
     session.endSession();
     return {
       success: true,
-      message: `add ${totalAddMember} new member(s) success!`,
+      message: `${totalMemberBlock} member(s) has been block!`,
       data: null,
     };
   } catch (e) {
@@ -103,4 +96,4 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
     throw e;
   }
 };
-export { room_add };
+export { room_block };
