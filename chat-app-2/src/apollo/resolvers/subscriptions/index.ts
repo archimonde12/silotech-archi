@@ -9,7 +9,7 @@ const Subscription = {
       () => pubsub.asyncIterator([LISTEN_CHANEL]),
       (payload, variables) => {
         return (
-          payload.room_listen.roomId.toString() === variables.roomId.toString()
+          payload.room_listen.roomKey === variables.roomKey
         );
       }
     ),

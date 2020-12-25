@@ -1,6 +1,8 @@
 import { ObjectId } from "mongodb";
-import { MemberRole } from "../../../models/Member";
+import { Member, MemberInMongo, MemberRole } from "../../../models/Member";
 import { client, collectionNames, db } from "../../../mongo";
+import { checkRoomIdInMongoInMutation } from "../../../ulti";
+import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
 const room_join = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======ROOM JOIN=====");
@@ -8,24 +10,20 @@ const room_join = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log({ args });
   const { newMemberSlug, roomId } = args;
   const objectRoomId = new ObjectId(roomId);
+  //Check arguments
+  if (!newMemberSlug.trim()) {
+    throw new Error("Title must be provided")
+  }
   //Start transcation
   const session = client.startSession();
   session.startTransaction();
   try {
     //Check roomId exist
-    let RoomData = await db
-      .collection(collectionNames.rooms)
-      .findOne({ _id: objectRoomId });
-    console.log({ RoomData });
-    if (!RoomData) {
-      await session.abortTransaction();
-      session.endSession();
-      throw new Error("RoomId not exist");
-    }
+    let RoomData = await checkRoomIdInMongoInMutation(objectRoomId,session)
     //Check newMemberSlug exist
     let checkSlug = await db
       .collection(collectionNames.users)
-      .findOne({ slug: newMemberSlug });
+      .findOne({ slug: newMemberSlug }, { session });
     console.log({ checkSlug });
     if (!checkSlug) {
       await session.abortTransaction();
@@ -41,7 +39,7 @@ const room_join = async (root: any, args: any, ctx: any): Promise<any> => {
     //Check block
     let blockMemberData = await db
       .collection(collectionNames.blockMembers)
-      .findOne({ $and: [{ roomId: objectRoomId }, { slug: newMemberSlug }] });
+      .findOne({ $and: [{ roomId: objectRoomId }, { slug: newMemberSlug }] }, { session });
     console.log({ blockMemberData });
     if (blockMemberData) {
       await session.abortTransaction();
@@ -51,7 +49,7 @@ const room_join = async (root: any, args: any, ctx: any): Promise<any> => {
     //Check member
     let memberData = await db
       .collection(collectionNames.members)
-      .findOne({ $and: [{ roomId: objectRoomId }, { slug: newMemberSlug }] });
+      .findOne({ $and: [{ roomId: objectRoomId }, { slug: newMemberSlug }] }, { session });
     console.log({ memberData });
     if (memberData) {
       await session.abortTransaction();
@@ -61,7 +59,7 @@ const room_join = async (root: any, args: any, ctx: any): Promise<any> => {
 
     //Add new Member Doc
     const now = new Date();
-    const insertNewMemberDoc = {
+    const insertNewMemberDoc:Member = {
       slug: newMemberSlug,
       roomId: objectRoomId,
       joinedAt: now,
@@ -69,20 +67,26 @@ const room_join = async (root: any, args: any, ctx: any): Promise<any> => {
     };
     const { insertedId } = await db
       .collection(collectionNames.members)
-      .insertOne(insertNewMemberDoc);
+      .insertOne(insertNewMemberDoc, { session });
     console.log({ insertedId });
     //Update Room Doc
     if (insertedId) {
       await db
         .collection(collectionNames.rooms)
-        .updateOne({ _id: objectRoomId }, { $inc: { totalMembers: 1 } });
+        .updateOne({ _id: objectRoomId }, { $inc: { totalMembers: 1 } }, { session });
     }
+    const dataResult:MemberInMongo={...insertNewMemberDoc,_id:insertedId}
     await session.commitTransaction();
     session.endSession();
+    const listenData={
+      roomId,
+      content:`${newMemberSlug} join this room`
+    }
+    pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
     return {
       success: true,
       message: `join room success!`,
-      data: insertNewMemberDoc,
+      data: dataResult,
     };
   } catch (e) {
     if (session.inTransaction()) {

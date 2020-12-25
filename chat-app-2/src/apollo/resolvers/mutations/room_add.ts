@@ -1,7 +1,8 @@
 import { ObjectId } from "mongodb";
 import { ADMIN_KEY } from "../../../config";
-import { MemberRole } from "../../../models/Member";
+import { Member, MemberRole } from "../../../models/Member";
 import { client, collectionNames, db } from "../../../mongo";
+import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
 const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======ROOM ADD=====");
@@ -10,6 +11,10 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
   const { master, roomId, addMemberSlugs } = args;
   const objectRoomId = new ObjectId(roomId);
   const totalAddMember = addMemberSlugs.length;
+  //Check arguments
+  if (!master.trim()) {
+    throw new Error("master must be provided")
+  }
   //Start transcation
   const session = client.startSession();
   session.startTransaction();
@@ -17,7 +22,7 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
     //Check roomId exist
     let RoomData = await db
       .collection(collectionNames.rooms)
-      .findOne({ _id: objectRoomId });
+      .findOne({ _id: objectRoomId }, { session });
     console.log({ RoomData });
     if (!RoomData) {
       await session.abortTransaction();
@@ -44,15 +49,14 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
     //Check addMemberSlugs exist
     let checkSlug = await db
       .collection(collectionNames.users)
-      .find({ slug: { $in: addMemberSlugs } })
+      .find({ slug: { $in: addMemberSlugs } }, { session })
       .toArray();
     console.log({ checkSlug });
     if (checkSlug.length !== totalAddMember) {
       await session.abortTransaction();
       session.endSession();
       throw new Error(
-        `${
-          totalAddMember - checkSlug.length
+        `${totalAddMember - checkSlug.length
         } member(s) not exist in user database`
       );
     }
@@ -61,7 +65,7 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
       .collection(collectionNames.members)
       .find({
         $and: [{ roomId: objectRoomId }, { slug: { $in: addMemberSlugs } }],
-      })
+      }, { session })
       .toArray();
     console.log({ checkOldMembers });
     if (checkOldMembers.length > 0) {
@@ -71,7 +75,7 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
     }
     //Create new member doc
     const now = new Date();
-    let insertMemberDocs = addMemberSlugs.map((memberSlug) => ({
+    let insertMemberDocs: Member[] = addMemberSlugs.map((memberSlug) => ({
       slug: memberSlug,
       roomId: objectRoomId,
       joinedAt: now,
@@ -79,17 +83,22 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
     }));
     let insertRes = await db
       .collection(collectionNames.members)
-      .insertMany(insertMemberDocs);
+      .insertMany(insertMemberDocs, { session });
     console.log(insertRes);
     //Update room doc
     await db
       .collection(collectionNames.rooms)
       .updateOne(
         { _id: objectRoomId },
-        { $inc: { totalMembers: totalAddMember } }
+        { $inc: { totalMembers: totalAddMember } }, { session }
       );
     await session.commitTransaction();
     session.endSession();
+    const listenData = {
+      roomId,
+      content: `${addMemberSlugs} has been added by the master`
+    }
+    pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
     return {
       success: true,
       message: `add ${totalAddMember} new member(s) success!`,

@@ -1,30 +1,31 @@
 import { IndexSpecification, ObjectID } from "mongodb";
+import { User } from "./User";
 
 const RoomTypes = {
     inbox: 'inbox',
     public: 'public',
     global: 'global'
 }
- 
+
 type Room = {
     title: string
-    createdBy: string
+    createdBy: User
     type: string
     createdAt: Date
     updatedAt: Date
     totalMembers: number
-    lastMess: string
+    lastMess: string|null
 }
 
 type RoomInMongo = {
     _id: ObjectID
     title: string
-    createdBy: string
+    createdBy: User
     type: string
     createdAt: Date
     updatedAt: Date
     totalMembers: number
-    lastMess: string
+    lastMess: string|null
 }
 
 const RoomIndexes: IndexSpecification[] = [
@@ -36,4 +37,6 @@ export {
     RoomInMongo,
     RoomIndexes,
     RoomTypes
+
 }
+

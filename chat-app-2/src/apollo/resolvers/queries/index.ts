@@ -8,7 +8,6 @@ const Query = {
     //Room
     get_all_rooms,
     get_room_details,
-    get_other_public_rooms,
     //Message
     get_messages,
     //Member

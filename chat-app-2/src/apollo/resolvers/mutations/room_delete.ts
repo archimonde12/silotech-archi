@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import { ADMIN_KEY } from "../../../config";
 import { MemberRole } from "../../../models/Member";
 import { client, collectionNames, db } from "../../../mongo";
+import { checkRoomIdInMongoInMutation } from "../../../ulti";
 
 const room_delete = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======ROOM DELETE=====");
@@ -9,20 +10,16 @@ const room_delete = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log({ args });
   const { createrSlug, roomId } = args;
   const objectRoomId = new ObjectId(roomId);
+  //Check arguments
+  if (!createrSlug.trim()) {
+    throw new Error("createrSlug must be provided")
+  }
   //Start transcation
   const session = client.startSession();
   session.startTransaction();
   try {
     //Check roomId exist
-    let RoomData = await db
-      .collection(collectionNames.rooms)
-      .findOne({ _id: objectRoomId });
-    console.log({ RoomData });
-    if (!RoomData) {
-      await session.abortTransaction();
-      session.endSession();
-      throw new Error("RoomId not exist");
-    }
+    let RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
     //Check room type
     if (RoomData.type === `inbox`) {
       await session.abortTransaction();
@@ -42,13 +39,13 @@ const room_delete = async (root: any, args: any, ctx: any): Promise<any> => {
       throw new Error(`${createrSlug} is not a master of this room`);
     }
     //Delete the room
-    await db.collection(collectionNames.rooms).deleteOne({ _id: objectRoomId });
+    await db.collection(collectionNames.rooms).deleteOne({ _id: objectRoomId }, { session });
     //Remove and user
     await db
       .collection(collectionNames.members)
-      .deleteMany({ roomId: objectRoomId });
+      .deleteMany({ roomId: objectRoomId }, { session });
     //Delete all message
-    await db.collection(collectionNames.messages).deleteMany({ roomId: objectRoomId })
+    await db.collection(collectionNames.messages).deleteMany({ roomId: objectRoomId }, { session })
     await session.commitTransaction();
     session.endSession();
     return { success: true, message: `delete this room success!`, data: null };

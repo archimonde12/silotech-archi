@@ -46,6 +46,7 @@ export const typeDefs = gql`
 
   type Message {
     chatRoomId: ObjectID!
+    type:String
     content: String
     createdBy: User!
     tag: [User]

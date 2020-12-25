@@ -7,7 +7,6 @@ import { room_remove } from "./room_remove";
 import { room_block } from "./room_block";
 import { message_send } from "./message_send";
 import { message_delete } from "./message_delete";
-import { inbox_create } from "./inbox_create";
 
 const Mutation = {
   //room
@@ -17,7 +16,6 @@ const Mutation = {
   room_leave,
   room_add,
   room_remove,
-  inbox_create,
   room_block,
   //message
   message_send,

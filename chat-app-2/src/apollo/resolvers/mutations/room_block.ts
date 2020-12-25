@@ -10,6 +10,10 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
   const { master, roomId, blockMembersSlugs } = args;
   const objectRoomId = new ObjectId(roomId);
   const totalMemberBlock = blockMembersSlugs.length;
+  //Check arguments
+  if (!master.trim()) {
+    throw new Error("master must be provided")
+  }
   //Check master in block list
   if (blockMembersSlugs.includes(master)) {
     throw new Error("Cannot remove the master");
@@ -21,7 +25,7 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
     //Check roomId exist
     let RoomData = await db
       .collection(collectionNames.rooms)
-      .findOne({ _id: objectRoomId });
+      .findOne({ _id: objectRoomId }, { session });
     console.log({ RoomData });
     if (!RoomData) {
       await session.abortTransaction();
@@ -46,21 +50,20 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
     };
     let checkOldMembers = await db
       .collection(collectionNames.members)
-      .find(checkOldMemFilter)
+      .find(checkOldMemFilter, { session })
       .toArray();
     console.log({ checkOldMembers });
     if (checkOldMembers.length !== totalMemberBlock) {
       await session.abortTransaction();
       session.endSession();
       throw new Error(
-        `${
-          totalMemberBlock - checkOldMembers.length
+        `${totalMemberBlock - checkOldMembers.length
         } user(s) are not a member in this room`
       );
     }
     let { deletedCount } = await db
       .collection(collectionNames.members)
-      .deleteMany(checkOldMemFilter);
+      .deleteMany(checkOldMemFilter, { session });
     console.log({ deletedCount });
     //Update room doc
     if (!deletedCount) {
@@ -70,7 +73,8 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
       .collection(collectionNames.rooms)
       .updateOne(
         { _id: objectRoomId },
-        { $inc: { totalMembers: -deletedCount } }
+        { $inc: { totalMembers: -deletedCount } }, 
+        { session }
       );
     //Add block member
     const insertBlockMemberDocs = blockMembersSlugs.map((slug) => ({
@@ -79,7 +83,7 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
     }));
     let insertRes = await db
       .collection(collectionNames.blockMembers)
-      .insertMany(insertBlockMemberDocs);
+      .insertMany(insertBlockMemberDocs, { session });
     console.log(`${insertRes.insertedCount} docs has been added!`);
     await session.commitTransaction();
     session.endSession();

@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { ADMIN_KEY } from "../../../config";
 import { MemberRole } from "../../../models/Member";
+import { Room, RoomInMongo } from "../../../models/Room";
 import { client, collectionNames, db } from "../../../mongo";
 
 const room_create = async (root: any, args: any, ctx: any): Promise<any> => {
@@ -8,6 +9,14 @@ const room_create = async (root: any, args: any, ctx: any): Promise<any> => {
   //Get arguments
   console.log({ args });
   const { slug, title, startMemberSlugs, roomType } = args;
+   //Check arguments
+  if (!title.trim()) {
+    throw new Error("Title must be provided")
+  }
+  if (!slug.trim()) {
+    throw new Error("Slug must be provided")
+  }
+
   //Check conditions input
   let checkSlugs: any;
   switch (roomType) {
@@ -37,50 +46,50 @@ const room_create = async (root: any, args: any, ctx: any): Promise<any> => {
       .find({ slug: { $in: checkSlugs } })
       .toArray();
     console.log({ findUserResCount: findUsersRes.length });
-    if (findUsersRes.length === checkSlugs.length) {
-      //Insert new room document
-      const now = new Date();
-      const insertRoomDoc = {
-        title,
-        createdBy: { slug },
-        type: roomType,
-        createdAt: now,
-        updatedAt: now,
-        totalMembers: checkSlugs.length,
-        lastMess: null,
-      };
-      console.log({ insertRoomDoc });
-      const { insertedId } = await db
-        .collection(collectionNames.rooms)
-        .insertOne(insertRoomDoc);
-      console.log(insertedId);
-      //Insert member docs
-      let insertMemberDocs = startMemberSlugs.map((slug) => ({
-        slug,
-        roomId: insertedId,
-        joinedAt: now,
-        role: MemberRole.member.id,
-      }));
-      insertMemberDocs.push({
-        slug,
-        roomId: insertedId,
-        joinedAt: now,
-        role: MemberRole.master.id,
-      });
-      console.log(insertMemberDocs);
-      await db.collection(collectionNames.members).insertMany(insertMemberDocs);
-      let result = { ...insertRoomDoc, _id: insertedId };
-      await session.commitTransaction();
+    if (findUsersRes.length !== checkSlugs.length) {
+      await session.abortTransaction();
       session.endSession();
-      return {
-        success: true,
-        message: `create new room success!`,
-        data: result,
-      };
+      throw new Error("Have slug not exist in database!");
     }
-    await session.abortTransaction();
+    //Insert new room document
+    const now = new Date();
+    const insertRoomDoc: Room = {
+      title,
+      createdBy: { slug },
+      type: roomType,
+      createdAt: now,
+      updatedAt: now,
+      totalMembers: checkSlugs.length,
+      lastMess: null,
+    };
+    console.log({ insertRoomDoc });
+    const { insertedId } = await db
+      .collection(collectionNames.rooms)
+      .insertOne(insertRoomDoc, { session });
+    console.log(insertedId);
+    //Insert member docs
+    let insertMemberDocs = startMemberSlugs.map((slug) => ({
+      slug,
+      roomId: insertedId,
+      joinedAt: now,
+      role: MemberRole.member.id,
+    }));
+    insertMemberDocs.push({
+      slug,
+      roomId: insertedId,
+      joinedAt: now,
+      role: MemberRole.master.id,
+    });
+    console.log(insertMemberDocs);
+    await db.collection(collectionNames.members).insertMany(insertMemberDocs, { session });
+    let dataResult:RoomInMongo = { ...insertRoomDoc, _id: insertedId };
+    await session.commitTransaction();
     session.endSession();
-    throw new Error("Have slug not exist in database!");
+    return {
+      success: true,
+      message: `create new room success!`,
+      data: dataResult,
+    };
   } catch (e) {
     if (session.inTransaction()) {
       await session.abortTransaction();

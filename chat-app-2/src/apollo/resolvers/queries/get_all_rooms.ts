@@ -1,37 +1,20 @@
 import { ObjectId } from "mongodb";
+import { RoomTypes } from "../../../models/Room";
 import { collectionNames, db } from "../../../mongo";
 
 const get_all_rooms = async (root: any, args: any, ctx: any): Promise<any> => {
     console.log("======GET ALL ROOMS=====");
-    //Get arguments
-    console.log({ args });
-    const { slug } = args;
     try {
-        //Check member data
-        const membersData = await db
-            .collection(collectionNames.members)
-            .aggregate([
-                {
-                    $lookup:
-                    {
-                        from: collectionNames.rooms,
-                        localField: 'roomId',
-                        foreignField: '_id',
-                        as: 'roomDetails'
-                    }
-                }, {
-                    $match: {
-                        slug
-                    }
-                }
-            ]).toArray();
-        console.log({membersData})
-        let slugRooms=membersData.map(member=>member.roomDetails[0])
-        const sortFunc=(a,b)=>{
-            return b.updatedAt-a.updatedAt
+        //Get all public room
+        const allRooms = await db.collection(collectionNames.rooms).find({ $or: [{ type: RoomTypes.public }, { type: RoomTypes.global }] }).toArray()
+        console.log({ allRooms })
+        const sortFunc = (a, b) => {
+            if(a.type < b.type) { return -1; }
+            if(a.type > b.type) { return 1; }
+            return 0;
         }
-        slugRooms.sort(sortFunc)
-        return slugRooms
+        allRooms.sort(sortFunc)
+        return allRooms
     } catch (e) {
         throw e;
     }

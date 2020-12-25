@@ -16,6 +16,7 @@ export const typeDefs = gql`
 
   union Result = Room | Message | Member
   union MessageData = PlainTextMessData | BetMessData
+  union SubMessage = Message | DeleteNoti | SystemMessage
 
   input MessData {
     title: String
@@ -36,7 +37,7 @@ export const typeDefs = gql`
     totalMembers: Int
     createdAt: Date
     updatedAt: Date
-    lastMess: String
+    lastMess: MessageData
   }
 
   type Member {
@@ -45,9 +46,21 @@ export const typeDefs = gql`
     joinedAt: Date
     role: String
   }
+  
+  type SystemMessage{
+    roomId:ObjectID
+    content:String
+  }
+
+  type DeleteNoti{
+    roomId:ObjectID
+    deleteMessageId:ObjectID!
+    content:String
+  }
 
   type Message {
-    roomId: ObjectID
+    _id:ObjectID!
+    roomKey: String
     sentAt: Date
     type: MessageType
     data: MessageData
@@ -71,11 +84,10 @@ export const typeDefs = gql`
 
   type Query {
     # Message
-    get_messages(slug: String, roomId: ObjectID!, limit: Int): [Message]
+    get_messages(sender: String, reciver: String!, limit: Int, skip:Int): [Message]
     # Room
     get_room_details(roomId: ObjectID!): Room
-    get_all_rooms(slug: String!): [Room]
-    get_other_public_rooms(slug: String!): [Room]
+    get_all_rooms: [Room]
     # Member
     get_all_members(roomId: ObjectID!): [Member]
   }
@@ -86,9 +98,8 @@ export const typeDefs = gql`
       slug: String!
       title: String!
       startMemberSlugs: [String]!
-      roomType: RoomType
+      roomType: RoomType!
     ): ResultMessage!
-    inbox_create(senderSlug: String!, reciverSlug: String!): Room!
     room_delete(createrSlug: String!, roomId: ObjectID!): ResultMessage!
     room_join(newMemberSlug: String!, roomId: ObjectID!): ResultMessage!
     room_leave(memberSlug: String!, roomId: ObjectID!): ResultMessage!
@@ -110,7 +121,7 @@ export const typeDefs = gql`
     # Message
     message_send(
       sender: String!
-      roomId: ObjectID!
+      reciver: String!
       type: MessageType
       data: MessData
     ): ResultMessage!
@@ -123,6 +134,6 @@ export const typeDefs = gql`
   }
 
   type Subscription {
-    room_listen(roomId: ObjectID!): Message
+    room_listen(roomKey: String!): SubMessage
   }
 `;

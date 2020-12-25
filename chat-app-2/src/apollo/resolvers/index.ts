@@ -32,7 +32,25 @@ export const resolvers = {
       if (obj.content) {
         return "PlainTextMessData";
       }
+      
       return null;
     },
   },
+  SubMessage:{
+    __resolveType(obj, context, info) {
+      if (obj.data) {
+        return "Message";
+      }
+
+      if (obj.deleteMessageId) {
+        return "DeleteNoti";
+      }
+
+      if (obj.content) {
+        return "SystemMessage";
+      }
+
+      return null;
+    },
+  }
 };

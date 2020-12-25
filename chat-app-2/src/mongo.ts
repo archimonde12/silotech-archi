@@ -3,7 +3,7 @@ import { mongoUri } from "./config";
 import { MessageIndexes } from "./models/Message";
 import { RoomIndexes } from "./models/Room";
 import { MemberIndexes } from "./models/Member";
-import { UserIndexes } from "./models/User";
+import { UserInMongoIndexes } from "./models/User";
 import { createMemberRoleToMongo } from "./initMongo/memberRole";
 import { createFakeUserToMongo } from "./initMongo/user";
 import { createMessageTypeToMongo } from "./initMongo/messageType";
@@ -66,7 +66,7 @@ const connectMongoDb = async () => {
         .collection(collectionNames.blockMembers)
         .createIndexes(BlockMemberIndexes),
       db.collection(collectionNames.messages).createIndexes(MessageIndexes),
-      db.collection(collectionNames.users).createIndexes(UserIndexes),
+      db.collection(collectionNames.users).createIndexes(UserInMongoIndexes),
       db.collection(collectionNames.rooms).createIndexes(RoomIndexes),
     ]);
     console.log(`Mongodb: connected`);

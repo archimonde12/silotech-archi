@@ -1,4 +1,5 @@
 import { IndexSpecification, ObjectID } from "mongodb";
+import { User } from "./User";
 
 const MessageTypes={
   plaintext:{
@@ -9,19 +10,20 @@ const MessageTypes={
 }
 
 type Message = {
-  roomId: ObjectID;
+  roomKey: string;
   sentAt: Date;
   type: string,
   data: object,
-  createdBy: string;
+  createdBy: User;
 };
 
 type MessageInMongo = {
   _id: ObjectID;
-  roomId: ObjectID;
+  roomKey: string;
   sentAt: Date;
-  content: string;
-  createdBy: string;
+  type: string,
+  data: object,
+  createdBy: User;
 };
 
 const MessageIndexes: IndexSpecification[] = [
