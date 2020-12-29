@@ -2,50 +2,38 @@ import { ObjectId } from "mongodb";
 import { ADMIN_KEY } from "../../../config";
 import { Member, MemberRole } from "../../../models/Member";
 import { client, collectionNames, db } from "../../../mongo";
+import { checkRoomIdInMongoInMutation } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
 const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======ROOM ADD=====");
   //Get arguments
   console.log({ args });
-  const { master, roomId, addMemberSlugs } = args;
+  const { admin, roomId, addMemberSlugs } = args;
   const objectRoomId = new ObjectId(roomId);
   const totalAddMember = addMemberSlugs.length;
   //Check arguments
-  if (!master.trim()) {
-    throw new Error("master must be provided")
-  }
+  if (!admin.trim()) throw new Error("master must be provided")
+  if (addMemberSlugs.length===0) throw new Error("addMemberSlugs must be provided")
+  if (addMemberSlugs.includes(admin)) throw new Error("Cannot add yourself");
   //Start transcation
   const session = client.startSession();
   session.startTransaction();
   try {
     //Check roomId exist
-    let RoomData = await db
-      .collection(collectionNames.rooms)
-      .findOne({ _id: objectRoomId }, { session });
-    console.log({ RoomData });
-    if (!RoomData) {
-      await session.abortTransaction();
-      session.endSession();
-      throw new Error("RoomId not exist");
-    }
+    let RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
     //Check room type
     if (RoomData.type === `inbox`) {
       await session.abortTransaction();
       session.endSession();
       throw new Error("Cannot add! Because this room is inboxRoom ");
     }
-    if (RoomData.type === `global` && master !== ADMIN_KEY) {
+    if (RoomData.type === `global`) {
       await session.abortTransaction();
       session.endSession();
-      throw new Error("wrong admin key!");
+      throw new Error("This is global room!you can do anything");
     }
-    //Check master
-    if (master !== RoomData.createdBy.slug) {
-      await session.abortTransaction();
-      session.endSession();
-      throw new Error(`${master} is not a master of this room`);
-    }
+
     //Check addMemberSlugs exist
     let checkSlug = await db
       .collection(collectionNames.users)
@@ -61,17 +49,37 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
       );
     }
     //Check member
+    const checkOldMembersArray = [...addMemberSlugs, admin]
     let checkOldMembers = await db
       .collection(collectionNames.members)
       .find({
-        $and: [{ roomId: objectRoomId }, { slug: { $in: addMemberSlugs } }],
+        $and: [{ roomId: objectRoomId }, { slug: { $in: checkOldMembersArray } }],
       }, { session })
       .toArray();
     console.log({ checkOldMembers });
-    if (checkOldMembers.length > 0) {
+    if (checkOldMembers.length > 1) {
       await session.abortTransaction();
       session.endSession();
-      throw new Error(`some one has already been a member`);
+      throw new Error(`Someone has already been a member`);
+    }
+    //Check block
+    let checkBlockMembers = await db
+    .collection(collectionNames.blockMembers)
+    .find({
+      $and: [{ roomId: objectRoomId }, { slug: { $in: checkOldMembersArray } }],
+    }, { session })
+    .toArray();
+    console.log({checkBlockMembers})
+    if (checkBlockMembers.length > 0) {
+      await session.abortTransaction();
+      session.endSession();
+      throw new Error(`Someone has already been block`);
+    }
+    //Check admin role
+    if (!checkOldMembers[0] || checkOldMembers[0].role === MemberRole.member.name) {
+      await session.abortTransaction();
+      session.endSession();
+      throw new Error(`${admin} is not a admin of this room`);
     }
     //Create new member doc
     const now = new Date();
@@ -79,7 +87,7 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
       slug: memberSlug,
       roomId: objectRoomId,
       joinedAt: now,
-      role: MemberRole.member.id,
+      role: MemberRole.member.name,
     }));
     let insertRes = await db
       .collection(collectionNames.members)
@@ -95,7 +103,7 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
     await session.commitTransaction();
     session.endSession();
     const listenData = {
-      roomId,
+      roomKey:roomId.toString(),
       content: `${addMemberSlugs} has been added by the master`
     }
     pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });

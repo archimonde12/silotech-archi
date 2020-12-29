@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "ts-node src/index.ts",
+    "dev": "ts-node ./src/index.ts",
+    "client": "ts-node ./src/grpc/account-service-client.ts",
     "dev:watch": "nodemon --watch 'src/**/*.ts' --exec ts-node src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -12,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@grpc/grpc-js": "^1.2.2",
     "@grpc/proto-loader": "^0.5.4",
     "@sentry/node": "^5.12.3",
     "@supercharge/request-ip": "^1.1.2",

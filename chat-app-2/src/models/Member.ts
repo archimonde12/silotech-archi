@@ -31,7 +31,7 @@ type MemberInMongo = {
 }
 
 const MemberIndexes: IndexSpecification[] = [
-    { key: { roomId: 1, role: 1, joinedAt: 1, slug: 1 } },
+    { key: { roomId: 1,slug: 1 } },
 ]
 
 export {

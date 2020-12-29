@@ -63,7 +63,7 @@ const room_join = async (root: any, args: any, ctx: any): Promise<any> => {
       slug: newMemberSlug,
       roomId: objectRoomId,
       joinedAt: now,
-      role: MemberRole.member.id,
+      role: MemberRole.member.name,
     };
     const { insertedId } = await db
       .collection(collectionNames.members)
@@ -79,7 +79,7 @@ const room_join = async (root: any, args: any, ctx: any): Promise<any> => {
     await session.commitTransaction();
     session.endSession();
     const listenData={
-      roomId,
+      roomKey:roomId.toString(),
       content:`${newMemberSlug} join this room`
     }
     pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });

@@ -1,12 +1,15 @@
 import { IndexSpecification, ObjectID } from "mongodb";
 import { User } from "./User";
 
-const MessageTypes={
-  plaintext:{
-    id:'0',
-    name:'plaintext'
+const MessageTypes = {
+  plaintext: {
+    id: '0',
+    name: 'plaintext'
   },
-
+  shareContact: {
+    id: '1',
+    name: 'shareContact'
+  }
 }
 
 type Message = {
@@ -27,7 +30,7 @@ type MessageInMongo = {
 };
 
 const MessageIndexes: IndexSpecification[] = [
-  { key: { roomId: 1, sentAt: -1, createdBy: 1 } },
+  { key: { roomId: 1, createdBy: 1 } },
 ];
 
-export { Message, MessageInMongo, MessageIndexes,MessageTypes };
+export { Message, MessageInMongo, MessageIndexes, MessageTypes };

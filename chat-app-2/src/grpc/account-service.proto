@@ -1,0 +1,15 @@
+syntax = "proto3";
+package AccountService;
+
+service BrickService {
+    rpc Call (Request) returns (Response) {}
+}
+
+message Request {
+    string method = 1;
+    string params = 2;
+}
+
+message Response {
+    string result = 1;
+}

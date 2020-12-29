@@ -3,17 +3,11 @@ import { RoomTypes } from "../../../models/Room";
 import { collectionNames, db } from "../../../mongo";
 import { createInboxRoomKey, testBcrypt } from "../../../ulti";
 
-const get_messages = async (root: any, args: any, ctx: any): Promise<any> => {
+const get_messages_in_room = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======GET MESSAGES=====");
   //Get arguments
   console.log({ args });
   const { sender, reciver, limit, skip } = args;
-  testBcrypt()
-  //Check arguments
-  if (!reciver.trim()) {
-    throw new Error("reciver is empty")
-  }
-
   try {
     //reciver is a room
     if (ObjectId.isValid(reciver)) {
@@ -25,14 +19,6 @@ const get_messages = async (root: any, args: any, ctx: any): Promise<any> => {
       console.log({ RoomData });
       if (!RoomData) {
         throw new Error("RoomId not exist");
-      }
-      //Check member
-      const memberData = await db
-        .collection(collectionNames.members)
-        .findOne({ $and: [{ roomId: objectRoomId }, { sender }] });
-      console.log({ memberData });
-      if (!memberData && RoomData.type === RoomTypes.inbox) {
-        throw new Error(`${sender} is not a member`);
       }
       //Query Message
       const allMessage = await db
@@ -74,4 +60,4 @@ const get_messages = async (root: any, args: any, ctx: any): Promise<any> => {
     throw e;
   }
 };
-export { get_messages };
+export { get_messages_in_room };

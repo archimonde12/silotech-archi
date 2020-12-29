@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
-import { Message, MessageInMongo} from "../../../models/Message";
+import { InboxRoom } from "../../../models/InboxRoom";
+import { Message, MessageInMongo } from "../../../models/Message";
 import { client, collectionNames, db } from "../../../mongo";
 import { checkRoomIdInMongoInMutation, createInboxRoomKey } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
@@ -49,7 +50,7 @@ const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
         .collection(collectionNames.messages)
         .insertOne(insertNewMessageDoc, { session });
       console.log({ insertedId });
-      const dataResult:MessageInMongo={...insertNewMessageDoc,_id:insertedId}
+      const dataResult: MessageInMongo = { ...insertNewMessageDoc, _id: insertedId }
       //Update room doc
       if (insertedId) {
         await db
@@ -69,7 +70,7 @@ const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
       };
     }
     //Inbox Message handler
-    const roomKey =await createInboxRoomKey(sender, reciver)
+    const roomKey = await createInboxRoomKey(sender, reciver)
     const checkSlugs = [sender, reciver]
     //Check sender and reciver exist in database
     const findUsersRes = await db
@@ -81,30 +82,46 @@ const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
       session.endSession();
       throw new Error("someone not exist in database!");
     }
-      //Add new message doc
-      const now = new Date();
-      const insertNewMessageDoc: Message = {
-        sentAt: now,
+    //Add new message doc
+    const now = new Date();
+    const insertNewMessageDoc: Message = {
+      sentAt: now,
+      roomKey,
+      type,
+      data,
+      createdBy: {
+        slug: sender,
+      },
+    };
+    const { insertedId } = await db
+      .collection(collectionNames.messages)
+      .insertOne(insertNewMessageDoc, { session });
+    console.log({ insertedId });
+    pubsub.publish(LISTEN_CHANEL, { room_listen: insertNewMessageDoc });
+    const dataResult: MessageInMongo = { ...insertNewMessageDoc, _id: insertedId }
+
+    //Create new inbox room if this is the first message
+    const inboxRoomUpdateRes=await db.collection(collectionNames.inboxRooms).updateOne({roomKey},{$set:{lastMess:dataResult}},{session})
+    console.log({modifiedCount:inboxRoomUpdateRes.modifiedCount})
+    if(inboxRoomUpdateRes.modifiedCount===0){
+      const insertNewInboxRoomDoc:InboxRoom={
         roomKey,
-        type,
-        data,
-        createdBy: {
-          slug: sender,
-        },
-      };
-      const { insertedId } = await db
-        .collection(collectionNames.messages)
-        .insertOne(insertNewMessageDoc, { session });
-      console.log({ insertedId });
-      const dataResult:MessageInMongo={...insertNewMessageDoc,_id:insertedId}
-      await session.commitTransaction();
-      session.endSession();
-      pubsub.publish(LISTEN_CHANEL, { room_listen: insertNewMessageDoc });
-      return {
-        success: true,
-        message: `send message success!`,
-        data: dataResult,
-      };
+        pair:[{slug:sender},{slug:reciver}],
+        lastMess:dataResult,
+        blockRequest:[],
+        friendContract:[]
+      }
+      await db.collection(collectionNames.inboxRooms).insertOne(insertNewInboxRoomDoc,{session})
+    }
+    await session.commitTransaction();
+    session.endSession();
+    pubsub.publish(LISTEN_CHANEL, { room_listen: insertNewMessageDoc });
+
+    return {
+      success: true,
+      message: `send message success!`,
+      data: dataResult,
+    };
   } catch (e) {
     if (session.inTransaction()) {
       await session.abortTransaction();
@@ -112,5 +129,5 @@ const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
     }
     throw e;
   }
-};
+}; 
 export { message_send };

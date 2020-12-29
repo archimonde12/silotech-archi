@@ -1,4 +1,5 @@
 import { IndexSpecification, ObjectID } from "mongodb";
+import { Message } from "./Message";
 import { User } from "./User";
 
 const RoomTypes = {
@@ -14,7 +15,7 @@ type Room = {
     createdAt: Date
     updatedAt: Date
     totalMembers: number
-    lastMess: string|null
+    lastMess: Message|null
 }
 
 type RoomInMongo = {
@@ -25,11 +26,11 @@ type RoomInMongo = {
     createdAt: Date
     updatedAt: Date
     totalMembers: number
-    lastMess: string|null
+    lastMess: Message|null
 }
 
 const RoomIndexes: IndexSpecification[] = [
-    { key: { title: 1, createdBy: 1, updateAt: 1 } },
+    { key: { title: 1, createdBy: 1, createdAt: 1 } },
 ]
 
 export {

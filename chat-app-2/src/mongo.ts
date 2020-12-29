@@ -4,10 +4,9 @@ import { MessageIndexes } from "./models/Message";
 import { RoomIndexes } from "./models/Room";
 import { MemberIndexes } from "./models/Member";
 import { UserInMongoIndexes } from "./models/User";
-import { createMemberRoleToMongo } from "./initMongo/memberRole";
 import { createFakeUserToMongo } from "./initMongo/user";
-import { createMessageTypeToMongo } from "./initMongo/messageType";
 import { BlockMemberIndexes } from "./models/BlockMember";
+import { InboxRoomIndexes } from "./models/InboxRoom";
 
 let client: MongoClient;
 let db: Db;
@@ -21,6 +20,7 @@ const collectionNames = {
   members: "members",
   memberRoles: "memberRoles",
   blockMembers: "blockMembers",
+  inboxRooms:"inboxRooms"
 };
 
 const connectMongoDb = async () => {
@@ -68,6 +68,7 @@ const connectMongoDb = async () => {
       db.collection(collectionNames.messages).createIndexes(MessageIndexes),
       db.collection(collectionNames.users).createIndexes(UserInMongoIndexes),
       db.collection(collectionNames.rooms).createIndexes(RoomIndexes),
+      db.collection(collectionNames.inboxRooms).createIndexes(InboxRoomIndexes)
     ]);
     console.log(`Mongodb: connected`);
   } catch (err) {
@@ -79,9 +80,7 @@ const connectMongoDb = async () => {
 };
 
 const initMongodb = async () => {
-  await createMemberRoleToMongo();
   await createFakeUserToMongo();
-  await createMessageTypeToMongo();
 };
 
 export { client, db, connectMongoDb, initMongodb, collectionNames };

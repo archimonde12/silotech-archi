@@ -47,7 +47,7 @@ const room_leave = async (root: any, args: any, ctx: any): Promise<any> => {
       throw new Error(`${memberSlug} is not a member`);
     }
     //Check master
-    if (memberData.role === MemberRole.master.id) {
+    if (memberData.role === MemberRole.master.name) {
       await session.abortTransaction();
       session.endSession();
       throw new Error(`${memberSlug} is master. Cannot leave`);
@@ -63,7 +63,7 @@ const room_leave = async (root: any, args: any, ctx: any): Promise<any> => {
     await session.commitTransaction();
     session.endSession();
     const listenData = {
-      roomId,
+      roomKey:roomId.toString(),
       content: `${memberSlug} leave this room`
     }
     pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });

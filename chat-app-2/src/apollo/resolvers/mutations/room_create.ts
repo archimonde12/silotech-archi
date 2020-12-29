@@ -72,13 +72,13 @@ const room_create = async (root: any, args: any, ctx: any): Promise<any> => {
       slug,
       roomId: insertedId,
       joinedAt: now,
-      role: MemberRole.member.id,
+      role: MemberRole.member.name,
     }));
     insertMemberDocs.push({
       slug,
       roomId: insertedId,
       joinedAt: now,
-      role: MemberRole.master.id,
+      role: MemberRole.master.name,
     });
     console.log(insertMemberDocs);
     await db.collection(collectionNames.members).insertMany(insertMemberDocs, { session });

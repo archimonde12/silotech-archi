@@ -9,13 +9,19 @@ export const typeDefs = gql`
     public
   }
 
+  enum MemberRole{
+    admin
+    member
+  }
+
   enum MessageType {
     plaintext
     bet
+    shareContact
   }
 
   union Result = Room | Message | Member
-  union MessageData = PlainTextMessData | BetMessData
+  union MessageData = PlainTextMessData | BetMessData | ShareContactData
   union SubMessage = Message | DeleteNoti | SystemMessage
 
   input MessData {
@@ -26,7 +32,6 @@ export const typeDefs = gql`
 
   type User {
     slug: String
-    createdAt: Date
   }
 
   type Room {
@@ -40,6 +45,14 @@ export const typeDefs = gql`
     lastMess: MessageData
   }
 
+  type InboxRoom{
+    roomKey:String!
+    pair:[User]!
+    lastMess:Message
+    blockRequest:[User]
+    friendStatus:Boolean
+  }
+
   type Member {
     slug: String
     roomId: ObjectID
@@ -48,7 +61,7 @@ export const typeDefs = gql`
   }
   
   type SystemMessage{
-    roomId:ObjectID
+    roomKey:String
     content:String
   }
 
@@ -82,12 +95,17 @@ export const typeDefs = gql`
     betId: String
   }
 
+  type ShareContactData {
+     userData:User
+  }
+
   type Query {
     # Message
-    get_messages(sender: String, reciver: String!, limit: Int, skip:Int): [Message]
+    get_messages_in_room(sender: String, reciver: String!, limit: Int, skip:Int): [Message]
     # Room
     get_room_details(roomId: ObjectID!): Room
     get_all_rooms: [Room]
+    get_inbox_rooms(slug: String!, limit: Int, skip:Int):[InboxRoom]
     # Member
     get_all_members(roomId: ObjectID!): [Member]
   }
@@ -104,20 +122,31 @@ export const typeDefs = gql`
     room_join(newMemberSlug: String!, roomId: ObjectID!): ResultMessage!
     room_leave(memberSlug: String!, roomId: ObjectID!): ResultMessage!
     room_add(
-      master: String!
+      admin: String!
       roomId: ObjectID!
       addMemberSlugs: [String]!
     ): ResultMessage!
     room_remove(
-      master: String!
+      admin: String!
       roomId: ObjectID!
       removeMemberSlugs: [String!]
     ): ResultMessage!
     room_block(
-      master: String!
+      admin: String!
       roomId: ObjectID!
       blockMembersSlugs: [String!]
     ): ResultMessage!
+    room_remove_block(
+      admin:String!
+      roomId:ObjectID!
+      blockMemberSlug:String!
+    ): ResultMessage!
+    room_set_role(
+      master:String!
+      roomId:ObjectID!
+      memberSlug:String!
+      roleSet:MemberRole
+    ):Member
     # Message
     message_send(
       sender: String!
@@ -127,7 +156,7 @@ export const typeDefs = gql`
     ): ResultMessage!
 
     message_delete(
-      master: String!
+      admin: String!
       roomId: ObjectID!
       messageId: ObjectID!
     ): ResultMessage!
