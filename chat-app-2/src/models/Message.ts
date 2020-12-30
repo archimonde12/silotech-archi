@@ -30,7 +30,7 @@ type MessageInMongo = {
 };
 
 const MessageIndexes: IndexSpecification[] = [
-  { key: { roomId: 1, createdBy: 1 } },
+  { key: { roomId: 1, createdBy: 1,sentAt:1 },unique:true},
 ];
 
 export { Message, MessageInMongo, MessageIndexes, MessageTypes };

@@ -4,6 +4,8 @@ import { Message, MessageInMongo } from "../../../models/Message";
 import { client, collectionNames, db } from "../../../mongo";
 import { checkRoomIdInMongoInMutation, createInboxRoomKey } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
+import {clientMain} from "../../../grpc/account-service-client"
+import {decode} from "jsonwebtoken"
 
 const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======MESSAGE SEND=====");
@@ -14,10 +16,12 @@ const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
   if (!sender.trim() || !reciver.trim()) {
     throw new Error("sender or reciver is empty")
   }
+  //await clientMain()
   //Start transcation
   const session = client.startSession();
   session.startTransaction();
-
+  //let decoded=decode("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzbHVnIjoiaG9hbjAwMSIsInR5cGUiOiJzbHVnIiwiZXhwIjoxNjEwNDQ1NzYxLCJpYXQiOjE2MDkxNDk3NjF9.leQK5fCB8_0zw8IL8v7pJQPY9mTvPX4uXX3Mj4FDE2U")
+  //console.log({decoded})
   try {
     //Public Message handler
     if (ObjectId.isValid(reciver)) {
@@ -82,6 +86,22 @@ const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
       session.endSession();
       throw new Error("someone not exist in database!");
     }
+    //Check friend 
+    const checkFriendQuery = {
+      slug1: sender > reciver ? sender : reciver,
+      slug2: sender <= reciver ? sender : reciver
+    }
+    const checkFriend = await db.collection(collectionNames.friends).findOne(checkFriendQuery, { session })
+    if(!checkFriend||!checkFriend.isFriend){
+      await session.abortTransaction();
+      session.endSession();
+      throw new Error("must be a friend before start a conversation!");
+    }
+    if(checkFriend.isBlock){
+      await session.abortTransaction();
+      session.endSession();
+      throw new Error("This conversation has been blocked");
+    }
     //Add new message doc
     const now = new Date();
     const insertNewMessageDoc: Message = {
@@ -101,17 +121,15 @@ const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
     const dataResult: MessageInMongo = { ...insertNewMessageDoc, _id: insertedId }
 
     //Create new inbox room if this is the first message
-    const inboxRoomUpdateRes=await db.collection(collectionNames.inboxRooms).updateOne({roomKey},{$set:{lastMess:dataResult}},{session})
-    console.log({modifiedCount:inboxRoomUpdateRes.modifiedCount})
-    if(inboxRoomUpdateRes.modifiedCount===0){
-      const insertNewInboxRoomDoc:InboxRoom={
+    const inboxRoomUpdateRes = await db.collection(collectionNames.inboxRooms).updateOne({ roomKey }, { $set: { lastMess: dataResult } }, { session })
+    console.log({ modifiedCount: inboxRoomUpdateRes.modifiedCount })
+    if (inboxRoomUpdateRes.modifiedCount === 0) {
+      const insertNewInboxRoomDoc: InboxRoom = {
         roomKey,
-        pair:[{slug:sender},{slug:reciver}],
-        lastMess:dataResult,
-        blockRequest:[],
-        friendContract:[]
+        pair: [{ slug: sender }, { slug: reciver }],
+        lastMess: dataResult,
       }
-      await db.collection(collectionNames.inboxRooms).insertOne(insertNewInboxRoomDoc,{session})
+      await db.collection(collectionNames.inboxRooms).insertOne(insertNewInboxRoomDoc, { session })
     }
     await session.commitTransaction();
     session.endSession();
@@ -129,5 +147,5 @@ const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
     }
     throw e;
   }
-}; 
+};
 export { message_send };

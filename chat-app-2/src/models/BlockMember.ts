@@ -12,7 +12,7 @@ type BlockMemberInMongo = {
 };
 
 const BlockMemberIndexes: IndexSpecification[] = [
-  { key: { roomId: 1, slug: 1 } },
+  { key: { roomId: 1, slug: 1 },unique:true},
 ];
 
 export { BlockMember, BlockMemberInMongo, BlockMemberIndexes };

@@ -6,28 +6,34 @@ import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
 const room_set_role = async (root: any, args: any, ctx: any): Promise<any> => {
     console.log("=====ROOM SET ROLE=====")
+
     //Get arguments
     console.log({ args })
     const { master, roomId, memberSlug, roleSet } = args;
     const roleToSet=roleSet==="admin"?MemberRole.admin.name:MemberRole.member.name
     console.log({roleToSet})
     const objectRoomId = new ObjectId(roomId);
+
     //Check arguments
     if (!master.trim()) throw new Error("admin must be provided");
     if (!memberSlug.trim()) throw new Error("member must be provided");
     if (master === memberSlug) throw new Error("cannot set role for your self");
+
     //Start transaction
     const session = client.startSession();
     session.startTransaction();
     try {
+
         //Check roomId exist
         let RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
+
         //Check master
         if (master !== RoomData.createdBy.slug) {
             await session.abortTransaction();
             session.endSession(); 
             throw new Error(`${master} is not a owner of this room`)
         }
+
         //Check member
         let checkOldMemFilter = { $and: [{ roomId: objectRoomId }, { slug: { $in: [master, memberSlug] } }] }
         let checkOldMembers = await db.collection(collectionNames.members).find(checkOldMemFilter, { session }).toArray()
@@ -38,6 +44,7 @@ const room_set_role = async (root: any, args: any, ctx: any): Promise<any> => {
             throw new Error(`${memberSlug} is not a member in this room`);
         }
         const memberData=checkOldMembers.filter(member=>member.slug===memberSlug)[0]
+        
         //Update new change
         const updateRoleRes=await db.collection(collectionNames.members).updateOne({ $and: [{ roomId: objectRoomId }, { slug:  memberSlug}] },{$set:{role:roleToSet}},{session})
         console.log({modifiedCount:updateRoleRes.modifiedCount})

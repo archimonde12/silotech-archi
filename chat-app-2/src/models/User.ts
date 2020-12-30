@@ -10,7 +10,7 @@ type UserInMongo = {
 }
 
 const UserInMongoIndexes: IndexSpecification[] = [
-    { key: { slug: 1 } },
+    { key: { slug: 1 },unique:true},
 ]
 
 export {

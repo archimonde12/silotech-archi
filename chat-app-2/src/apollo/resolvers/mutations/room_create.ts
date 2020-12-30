@@ -9,14 +9,11 @@ const room_create = async (root: any, args: any, ctx: any): Promise<any> => {
   //Get arguments
   console.log({ args });
   const { slug, title, startMemberSlugs, roomType } = args;
-   //Check arguments
-  if (!title.trim()) {
-    throw new Error("Title must be provided")
-  }
-  if (!slug.trim()) {
-    throw new Error("Slug must be provided")
-  }
 
+  //Check arguments
+  if (!title.trim()) throw new Error("Title must be provided")
+  if (!slug.trim()) throw new Error("Slug must be provided")
+  
   //Check conditions input
   let checkSlugs: any;
   switch (roomType) {
@@ -36,10 +33,12 @@ const room_create = async (root: any, args: any, ctx: any): Promise<any> => {
     default:
       break;
   }
+
   //Start transcation
   const session = client.startSession();
   session.startTransaction();
   try {
+
     //Check slug and member exist in database
     const findUsersRes = await db
       .collection(collectionNames.users)
@@ -51,6 +50,7 @@ const room_create = async (root: any, args: any, ctx: any): Promise<any> => {
       session.endSession();
       throw new Error("Have slug not exist in database!");
     }
+
     //Insert new room document
     const now = new Date();
     const insertRoomDoc: Room = {
@@ -67,6 +67,7 @@ const room_create = async (root: any, args: any, ctx: any): Promise<any> => {
       .collection(collectionNames.rooms)
       .insertOne(insertRoomDoc, { session });
     console.log(insertedId);
+    
     //Insert member docs
     let insertMemberDocs = startMemberSlugs.map((slug) => ({
       slug,
@@ -82,7 +83,7 @@ const room_create = async (root: any, args: any, ctx: any): Promise<any> => {
     });
     console.log(insertMemberDocs);
     await db.collection(collectionNames.members).insertMany(insertMemberDocs, { session });
-    let dataResult:RoomInMongo = { ...insertRoomDoc, _id: insertedId };
+    let dataResult: RoomInMongo = { ...insertRoomDoc, _id: insertedId };
     await session.commitTransaction();
     session.endSession();
     return {

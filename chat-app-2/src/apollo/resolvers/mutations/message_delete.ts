@@ -13,7 +13,7 @@ const message_delete = async (root: any, args: any, ctx: any): Promise<any> => {
   const { master, roomId, messageId } = args;
   const objectRoomId = new ObjectId(roomId);
   const objectMessageId = new ObjectId(messageId);
-  //Start transcation
+  //Start transaction
   const session = client.startSession();
   session.startTransaction();
   try {

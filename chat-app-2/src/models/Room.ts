@@ -30,7 +30,7 @@ type RoomInMongo = {
 }
 
 const RoomIndexes: IndexSpecification[] = [
-    { key: { title: 1, createdBy: 1, createdAt: 1 } },
+    { key: { title: 1, createdBy: 1, createdAt: 1 },unique:true},
 ]
 
 export {

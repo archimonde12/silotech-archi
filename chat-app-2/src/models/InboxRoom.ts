@@ -6,8 +6,6 @@ type InboxRoom = {
     roomKey: string
     pair: User[]
     lastMess: Message | null
-    blockRequest: User[]
-    friendContract: User[]
 }
 
 type InboxRoomInMongo = {
@@ -15,12 +13,10 @@ type InboxRoomInMongo = {
     roomKey: string
     pair: User[]
     lastMess: Message | null
-    blockRequest: User[]
-    friendContract: User[]
 }
 
 const InboxRoomIndexes: IndexSpecification[] = [
-    { key: { roomKey: 1 } },
+    { key: { roomKey: 1 },unique:true},
     { key: { "lastMess.sentAt": 1 } }
 ]
 

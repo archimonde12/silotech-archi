@@ -11,9 +11,8 @@ const room_delete = async (root: any, args: any, ctx: any): Promise<any> => {
   const { createrSlug, roomId } = args;
   const objectRoomId = new ObjectId(roomId);
   //Check arguments
-  if (!createrSlug.trim()) {
-    throw new Error("createrSlug must be provided")
-  }
+  if (!createrSlug.trim()) throw new Error("createrSlug must be provided")
+
   //Start transcation
   const session = client.startSession();
   session.startTransaction();

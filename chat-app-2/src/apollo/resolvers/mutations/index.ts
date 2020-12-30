@@ -9,6 +9,11 @@ import { message_send } from "./message_send";
 import { message_delete } from "./message_delete";
 import {room_set_role} from "./room_set_role"
 import {room_remove_block} from "./room_remove_block"
+import {friend_accept_request} from "./friend_accept_request"
+import {friend_block} from "./friend_block"
+import {friend_reject_request} from "./friend_reject_request"
+import {friend_send_request} from "./friend_send_request"
+import {friend_block_remove} from "./friend_block_remove"
 
 const Mutation = {
   //room
@@ -24,5 +29,11 @@ const Mutation = {
   //message
   message_send,
   message_delete,
+  //friend
+  friend_send_request,
+  friend_accept_request,
+  friend_reject_request,
+  friend_block,
+  friend_block_remove,
 };
 export { Mutation };

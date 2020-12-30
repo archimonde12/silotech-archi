@@ -11,15 +11,14 @@ const room_join = async (root: any, args: any, ctx: any): Promise<any> => {
   const { newMemberSlug, roomId } = args;
   const objectRoomId = new ObjectId(roomId);
   //Check arguments
-  if (!newMemberSlug.trim()) {
-    throw new Error("Title must be provided")
-  }
+  if (!newMemberSlug.trim()) throw new Error("Title must be provided")
+
   //Start transcation
   const session = client.startSession();
   session.startTransaction();
   try {
     //Check roomId exist
-    let RoomData = await checkRoomIdInMongoInMutation(objectRoomId,session)
+    let RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
     //Check newMemberSlug exist
     let checkSlug = await db
       .collection(collectionNames.users)
@@ -59,7 +58,7 @@ const room_join = async (root: any, args: any, ctx: any): Promise<any> => {
 
     //Add new Member Doc
     const now = new Date();
-    const insertNewMemberDoc:Member = {
+    const insertNewMemberDoc: Member = {
       slug: newMemberSlug,
       roomId: objectRoomId,
       joinedAt: now,
@@ -75,12 +74,12 @@ const room_join = async (root: any, args: any, ctx: any): Promise<any> => {
         .collection(collectionNames.rooms)
         .updateOne({ _id: objectRoomId }, { $inc: { totalMembers: 1 } }, { session });
     }
-    const dataResult:MemberInMongo={...insertNewMemberDoc,_id:insertedId}
+    const dataResult: MemberInMongo = { ...insertNewMemberDoc, _id: insertedId }
     await session.commitTransaction();
     session.endSession();
-    const listenData={
-      roomKey:roomId.toString(),
-      content:`${newMemberSlug} join this room`
+    const listenData = {
+      roomKey: roomId.toString(),
+      content: `${newMemberSlug} join this room`
     }
     pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
     return {

@@ -14,6 +14,7 @@ const Query = {
     get_messages_in_room,
     //Member
     get_all_members,
+    
 };
 
 export { Query };

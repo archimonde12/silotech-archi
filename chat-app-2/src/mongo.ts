@@ -7,6 +7,7 @@ import { UserInMongoIndexes } from "./models/User";
 import { createFakeUserToMongo } from "./initMongo/user";
 import { BlockMemberIndexes } from "./models/BlockMember";
 import { InboxRoomIndexes } from "./models/InboxRoom";
+import {FriendIndexes} from "./models/Friend"
 
 let client: MongoClient;
 let db: Db;
@@ -20,7 +21,8 @@ const collectionNames = {
   members: "members",
   memberRoles: "memberRoles",
   blockMembers: "blockMembers",
-  inboxRooms:"inboxRooms"
+  inboxRooms:"inboxRooms",
+  friends:"friends"
 };
 
 const connectMongoDb = async () => {
@@ -68,7 +70,8 @@ const connectMongoDb = async () => {
       db.collection(collectionNames.messages).createIndexes(MessageIndexes),
       db.collection(collectionNames.users).createIndexes(UserInMongoIndexes),
       db.collection(collectionNames.rooms).createIndexes(RoomIndexes),
-      db.collection(collectionNames.inboxRooms).createIndexes(InboxRoomIndexes)
+      db.collection(collectionNames.inboxRooms).createIndexes(InboxRoomIndexes),
+      db.collection(collectionNames.friends).createIndexes(FriendIndexes)
     ]);
     console.log(`Mongodb: connected`);
   } catch (err) {

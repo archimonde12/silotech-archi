@@ -11,9 +11,8 @@ const room_leave = async (root: any, args: any, ctx: any): Promise<any> => {
   const { memberSlug, roomId } = args;
   const objectRoomId = new ObjectId(roomId);
   //Check arguments
-  if (!memberSlug.trim()) {
-    throw new Error("memberSlug must be provided")
-  }
+  if (!memberSlug.trim()) throw new Error("memberSlug must be provided")
+
   //Start transcation
   const session = client.startSession();
   session.startTransaction();
@@ -63,7 +62,7 @@ const room_leave = async (root: any, args: any, ctx: any): Promise<any> => {
     await session.commitTransaction();
     session.endSession();
     const listenData = {
-      roomKey:roomId.toString(),
+      roomKey: roomId.toString(),
       content: `${memberSlug} leave this room`
     }
     pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });

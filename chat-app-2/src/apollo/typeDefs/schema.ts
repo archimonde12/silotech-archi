@@ -108,6 +108,8 @@ export const typeDefs = gql`
     get_inbox_rooms(slug: String!, limit: Int, skip:Int):[InboxRoom]
     # Member
     get_all_members(roomId: ObjectID!): [Member]
+    # Friend
+    get_all_friends(slug:String!):[User]
   }
 
   type Mutation {
@@ -160,6 +162,13 @@ export const typeDefs = gql`
       roomId: ObjectID!
       messageId: ObjectID!
     ): ResultMessage!
+
+    # Friend
+    friend_send_request(senderSlug:String!,reciverSlug:String!):ResultMessage!
+    friend_accept_request(reciverSlug:String!,senderSlug:String!):ResultMessage!
+    friend_reject_request(reciverSlug:String!,senderSlug:String!):ResultMessage!
+    friend_block(reciverSlug:String!,senderSlug:String!):ResultMessage!
+    friend_block_remove(reciverSlug:String!,senderSlug:String!):ResultMessage!
   }
 
   type Subscription {
