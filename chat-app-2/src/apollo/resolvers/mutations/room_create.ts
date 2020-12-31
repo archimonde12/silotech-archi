@@ -1,6 +1,4 @@
-import { ObjectId } from "mongodb";
 import { ADMIN_KEY } from "../../../config";
-import { VerifyToken } from "../../../grpc/account-service-client";
 import { MemberRole } from "../../../models/Member";
 import { Room, RoomInMongo } from "../../../models/Room";
 import { client, collectionNames, db } from "../../../mongo";

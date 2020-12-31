@@ -1,5 +1,4 @@
 import { ObjectId } from "mongodb";
-import { VerifyToken } from "../../../grpc/account-service-client";
 import { MemberRole } from "../../../models/Member";
 import { client, collectionNames, db } from "../../../mongo";
 import { checkRoomIdInMongoInMutation, getSlugByToken } from "../../../ulti";

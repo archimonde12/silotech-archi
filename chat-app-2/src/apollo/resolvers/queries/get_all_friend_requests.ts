@@ -1,4 +1,3 @@
-import { VerifyToken } from "../../../grpc/account-service-client";
 import { collectionNames, db } from "../../../mongo";
 import { getSlugByToken } from "../../../ulti";
 

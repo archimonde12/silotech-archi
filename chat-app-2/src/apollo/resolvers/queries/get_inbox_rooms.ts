@@ -1,4 +1,3 @@
-import { VerifyToken } from "../../../grpc/account-service-client";
 import { InboxRoomInMongo } from "../../../models/InboxRoom";
 import { collectionNames, db } from "../../../mongo";
 import { getSlugByToken } from "../../../ulti";

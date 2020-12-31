@@ -1,6 +1,5 @@
 import { ObjectId } from "mongodb";
 import { ADMIN_KEY } from "../../../config";
-import { VerifyToken } from "../../../grpc/account-service-client";
 import { client, collectionNames, db } from "../../../mongo";
 import { checkRoomIdInMongoInMutation, getSlugByToken } from "../../../ulti";
 

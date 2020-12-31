@@ -1,6 +1,4 @@
 import { ObjectId } from "mongodb";
-import { VerifyToken } from "../../../grpc/account-service-client";
-import { RoomTypes } from "../../../models/Room";
 import { collectionNames, db } from "../../../mongo";
 import { createInboxRoomKey, getSlugByToken } from "../../../ulti";
 

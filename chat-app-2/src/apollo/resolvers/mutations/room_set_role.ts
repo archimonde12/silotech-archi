@@ -1,5 +1,4 @@
 import { ObjectId } from "mongodb";
-import { VerifyToken } from "../../../grpc/account-service-client";
 import { MemberRole } from "../../../models/Member";
 import { collectionNames, db, client } from "../../../mongo";
 import { checkRoomIdInMongoInMutation, getSlugByToken } from "../../../ulti";
@@ -17,7 +16,7 @@ const room_set_role = async (root: any, args: any, ctx: any): Promise<any> => {
 
     //Check arguments
     if (!roomId.trim()) throw new Error("roomId must be provided");
-    
+
     //Verify token and get slug
     const master = await getSlugByToken(token)
     if (!memberSlug.trim()) throw new Error("member must be provided");
