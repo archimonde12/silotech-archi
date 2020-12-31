@@ -1,21 +1,26 @@
 import { ObjectId } from "mongodb";
 import { ADMIN_KEY } from "../../../config";
+import { VerifyToken } from "../../../grpc/account-service-client";
 import { Member, MemberRole } from "../../../models/Member";
 import { client, collectionNames, db } from "../../../mongo";
-import { checkRoomIdInMongoInMutation } from "../../../ulti";
+import { checkRoomIdInMongoInMutation, getSlugByToken } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
 const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======ROOM ADD=====");
   //Get arguments
   console.log({ args });
-  const { admin, roomId, addMemberSlugs } = args;
+  const { token, roomId, addMemberSlugs } = args;
   const objectRoomId = new ObjectId(roomId);
   const totalAddMember = addMemberSlugs.length;
   //Check arguments
-  if (!admin.trim()) throw new Error("master must be provided")
-  if (addMemberSlugs.length===0) throw new Error("addMemberSlugs must be provided")
+  if (!roomId.trim()) throw new Error("roomId must be provided")
+  if (addMemberSlugs.length===0) throw new Error("add Member must be provided")
+  //Verify token and get slug
+  let admin =await getSlugByToken(token)
+  if (addMemberSlugs.length === 0) throw new Error("addMemberSlugs must be provided")
   if (addMemberSlugs.includes(admin)) throw new Error("Cannot add yourself");
+
   //Start transcation
   const session = client.startSession();
   session.startTransaction();
@@ -48,6 +53,7 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
         } member(s) not exist in user database`
       );
     }
+
     //Check member
     const checkOldMembersArray = [...addMemberSlugs, admin]
     let checkOldMembers = await db
@@ -64,12 +70,12 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
     }
     //Check block
     let checkBlockMembers = await db
-    .collection(collectionNames.blockMembers)
-    .find({
-      $and: [{ roomId: objectRoomId }, { slug: { $in: checkOldMembersArray } }],
-    }, { session })
-    .toArray();
-    console.log({checkBlockMembers})
+      .collection(collectionNames.blockMembers)
+      .find({
+        $and: [{ roomId: objectRoomId }, { slug: { $in: checkOldMembersArray } }],
+      }, { session })
+      .toArray();
+    console.log({ checkBlockMembers })
     if (checkBlockMembers.length > 0) {
       await session.abortTransaction();
       session.endSession();
@@ -103,8 +109,8 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
     await session.commitTransaction();
     session.endSession();
     const listenData = {
-      roomKey:roomId.toString(),
-      content: `${addMemberSlugs} has been added by the master`
+      roomKey: roomId.toString(),
+      content: `${addMemberSlugs} has been added`
     }
     pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
     return {

@@ -1,12 +1,15 @@
 import { collectionNames, db, client } from "../../../mongo";
+import { getSlugByToken } from "../../../ulti";
 
 const friend_reject_request = async (root: any, args: any, ctx: any): Promise<any> => {
     console.log("======FRIEND REJECT REQUEST=====");
     //Get arguments
     console.log({ args });
-    const { reciverSlug, senderSlug } = args;
+    const { token, senderSlug } = args;
     //Check arguments
-    if (!senderSlug.trim() || !reciverSlug.trim()) throw new Error("all arguments must be provided")
+    if (!senderSlug.trim() || !token.trim()) throw new Error("all arguments must be provided")
+    //Verify token and get slug
+    let reciverSlug = await getSlugByToken(token)
     //Start transaction
     const session = client.startSession()
     session.startTransaction()
@@ -25,7 +28,7 @@ const friend_reject_request = async (root: any, args: any, ctx: any): Promise<an
             throw new Error("Reject fail!")
         }
         //Update friend docments
-        const updateDoc = { $set: { _friendRequestFrom: null} }
+        const updateDoc = { $set: { _friendRequestFrom: null } }
         const { modifiedCount } = await db.collection(collectionNames.friends).updateOne(checkFriendQuery, updateDoc, { session })
         if (modifiedCount !== 1) {
             await session.abortTransaction();
@@ -34,7 +37,7 @@ const friend_reject_request = async (root: any, args: any, ctx: any): Promise<an
         }
         await session.commitTransaction()
         await session.endSession()
-        return{
+        return {
             success: true,
             message: `${reciverSlug} reject ${senderSlug}'s friend request!`,
             data: null

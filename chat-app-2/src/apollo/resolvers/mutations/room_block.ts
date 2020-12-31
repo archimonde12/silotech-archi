@@ -1,8 +1,9 @@
 import { ObjectId } from "mongodb";
 import { ADMIN_KEY } from "../../../config";
+import { VerifyToken } from "../../../grpc/account-service-client";
 import { MemberRole } from "../../../models/Member";
 import { client, collectionNames, db } from "../../../mongo";
-import { checkRoomIdInMongoInMutation } from "../../../ulti";
+import { checkRoomIdInMongoInMutation, getSlugByToken } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
 const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
@@ -10,13 +11,15 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
 
   //Get arguments
   console.log({ args });
-  const { admin, roomId, blockMembersSlugs } = args;
+  const { token, roomId, blockMembersSlugs } = args;
   const objectRoomId = new ObjectId(roomId);
   const totalMemberBlock = blockMembersSlugs.length;
 
   //Check arguments
-  if (!admin.trim()) throw new Error("admin must be provided")
-  if (blockMembersSlugs.length===0) throw new Error("blockMembersSlugs must be provided")
+  if (!roomId.trim()) throw new Error("roomId must be provided")
+  //Verify token
+  const admin = await getSlugByToken(token)
+  if (blockMembersSlugs.length === 0) throw new Error("blockMembersSlugs must be provided")
   if (blockMembersSlugs.includes(admin)) throw new Error("Cannot block yourself");
 
   //Start transcation
@@ -72,7 +75,7 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
       .collection(collectionNames.members)
       .deleteMany(deleteQuery, { session });
     console.log({ deletedCount });
-    
+
     //Update room doc
     if (!deletedCount) {
       throw new Error("fail to delete");

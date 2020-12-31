@@ -1,13 +1,16 @@
 import { Friend } from "../../../models/Friend";
 import { client, collectionNames, db } from "../../../mongo";
+import { getSlugByToken } from "../../../ulti";
 
 const friend_send_request = async (root: any, args: any, ctx: any): Promise<any> => {
     console.log("======FRIEND REQUEST SEND=====");
     //Get arguments
     console.log({ args });
-    const { senderSlug, reciverSlug } = args;
+    const { token, reciverSlug } = args;
     //Check arguments
-    if (!senderSlug.trim() || !reciverSlug.trim()) throw new Error("all arguments must be provided")
+    if (!token.trim() || !reciverSlug.trim()) throw new Error("all arguments must be provided")
+    //Verify token and get slug
+    const senderSlug = await getSlugByToken(token)
     //Start transaction
     const session = client.startSession()
     session.startTransaction()
@@ -18,7 +21,7 @@ const friend_send_request = async (root: any, args: any, ctx: any): Promise<any>
             slug2: senderSlug <= reciverSlug ? senderSlug : reciverSlug
         }
         const checkFriend = await db.collection(collectionNames.friends).findOne(checkFriendQuery, { session })
-        console.log({checkFriend})
+        console.log({ checkFriend })
         if (checkFriend) {
             //Check is Friend
             if (checkFriend.isFriend) {
@@ -44,8 +47,8 @@ const friend_send_request = async (root: any, args: any, ctx: any): Promise<any>
                 throw new Error(`${senderSlug} already recived a request from ${reciverSlug}`)
             }
             //update friend Request 
-            const updateRes = await db.collection(collectionNames.friends).updateOne(checkFriendQuery , { $set: { _friendRequestFrom: senderSlug } },{ session })
-            console.log({modifiedCount:updateRes})
+            const updateRes = await db.collection(collectionNames.friends).updateOne(checkFriendQuery, { $set: { _friendRequestFrom: senderSlug } }, { session })
+            console.log({ modifiedCount: updateRes })
             if (updateRes.modifiedCount !== 1) {
                 await session.abortTransaction();
                 session.endSession();
@@ -71,9 +74,9 @@ const friend_send_request = async (root: any, args: any, ctx: any): Promise<any>
             _friendRequestFrom: senderSlug,
             _blockRequest: []
         }
-        console.log({newFriendDocument})
-        const { insertedId } = await db.collection(collectionNames.friends).insertOne(newFriendDocument,{ session })
-        console.log({insertedId})
+        console.log({ newFriendDocument })
+        const { insertedId } = await db.collection(collectionNames.friends).insertOne(newFriendDocument, { session })
+        console.log({ insertedId })
         if (!insertedId) {
             await session.abortTransaction();
             session.endSession();

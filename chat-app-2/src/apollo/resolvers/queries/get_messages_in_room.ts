@@ -1,13 +1,14 @@
 import { ObjectId } from "mongodb";
+import { VerifyToken } from "../../../grpc/account-service-client";
 import { RoomTypes } from "../../../models/Room";
 import { collectionNames, db } from "../../../mongo";
-import { createInboxRoomKey, testBcrypt } from "../../../ulti";
+import { createInboxRoomKey, getSlugByToken } from "../../../ulti";
 
 const get_messages_in_room = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======GET MESSAGES=====");
   //Get arguments
   console.log({ args });
-  const { sender, reciver, limit, skip } = args;
+  const { token, reciver, limit, skip } = args;
   try {
     //reciver is a room
     if (ObjectId.isValid(reciver)) {
@@ -32,17 +33,19 @@ const get_messages_in_room = async (root: any, args: any, ctx: any): Promise<any
       return allMessage;
     }
     //reciver is a slug
-    if (!sender.trim()) {
-      throw new Error("sender must provide in this situation")
+    if (!token.trim()) {
+      throw new Error("token must provided in this situation")
     }
-    const roomKey =await createInboxRoomKey(sender, reciver)
+    //Verify token and get slug
+    const sender = await getSlugByToken(token)
+    const roomKey = await createInboxRoomKey(sender, reciver)
     const checkSlugs = [sender, reciver]
     //Check sender and reciver exist in database
     const findUsersRes = await db
       .collection(collectionNames.users)
       .find({ slug: { $in: checkSlugs } })
       .toArray();
-    console.log({findUsersRes})
+    console.log({ findUsersRes })
     if (findUsersRes.length !== 2) {
       throw new Error("someone not exist in database!");
     }

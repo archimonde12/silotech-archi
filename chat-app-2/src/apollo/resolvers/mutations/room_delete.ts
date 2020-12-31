@@ -1,18 +1,19 @@
 import { ObjectId } from "mongodb";
 import { ADMIN_KEY } from "../../../config";
-import { MemberRole } from "../../../models/Member";
+import { VerifyToken } from "../../../grpc/account-service-client";
 import { client, collectionNames, db } from "../../../mongo";
-import { checkRoomIdInMongoInMutation } from "../../../ulti";
+import { checkRoomIdInMongoInMutation, getSlugByToken } from "../../../ulti";
 
 const room_delete = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======ROOM DELETE=====");
   //Get arguments
   console.log({ args });
-  const { createrSlug, roomId } = args;
+  const { token, roomId } = args;
   const objectRoomId = new ObjectId(roomId);
   //Check arguments
-  if (!createrSlug.trim()) throw new Error("createrSlug must be provided")
-
+  if (!roomId.trim()) throw new Error("roomId must be provided")
+  //Verify token and get slug
+  const createrSlug = await getSlugByToken(token)
   //Start transcation
   const session = client.startSession();
   session.startTransaction();

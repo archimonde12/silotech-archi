@@ -1,13 +1,18 @@
 
-import { initApollo} from "./apollo";
+import { initApollo } from "./apollo";
+import { connectBrickConsumer } from "./kafka";
 import { connectMongoDb, initMongodb } from "./mongo"
 
 
 const start = async () => {
-  await connectMongoDb();
-  await initApollo();
-  
-  await initMongodb()
+  try {
+    await connectMongoDb();
+    await initApollo();
+    await initMongodb()
+    await connectBrickConsumer()
+  } catch (e) {
+    throw e
+  }
 };
 
 start();

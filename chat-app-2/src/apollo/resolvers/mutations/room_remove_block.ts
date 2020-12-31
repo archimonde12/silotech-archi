@@ -1,23 +1,25 @@
 import { ObjectId } from "mongodb";
+import { VerifyToken } from "../../../grpc/account-service-client";
 import { MemberRole } from "../../../models/Member";
 import { client, collectionNames, db } from "../../../mongo";
-import { checkRoomIdInMongoInMutation } from "../../../ulti";
+import { checkRoomIdInMongoInMutation, getSlugByToken } from "../../../ulti";
 
 const room_remove_block = async (root: any, args: any, ctx: any): Promise<any> => {
     console.log("======ROOM REMOVE BLOCK=====");
     //Get arguments
     console.log({ args });
-    const { admin, roomId, blockMemberSlug } = args;
+    const { token, roomId, blockMemberSlug } = args;
     const objectRoomId = new ObjectId(roomId);
     //Check arguments
-    if (!admin.trim()) throw new Error("admin must be provided")
+    if (!roomId.trim()) throw new Error("roomId must be provided")
+    //Verify token and get slug
+    const admin = await getSlugByToken(token)
     if (!blockMemberSlug.trim()) throw new Error("block member must be provided");
     if (blockMemberSlug.trim() === admin.trim()) throw new Error("cannot remove block yourself")
     //Start transcation
     const session = client.startSession();
     session.startTransaction();
     try {
-
         //Check roomId exist
         let RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
 

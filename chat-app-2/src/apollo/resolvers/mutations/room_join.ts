@@ -1,18 +1,19 @@
 import { ObjectId } from "mongodb";
 import { Member, MemberInMongo, MemberRole } from "../../../models/Member";
 import { client, collectionNames, db } from "../../../mongo";
-import { checkRoomIdInMongoInMutation } from "../../../ulti";
+import { checkRoomIdInMongoInMutation, getSlugByToken } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
 const room_join = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======ROOM JOIN=====");
   //Get arguments
   console.log({ args });
-  const { newMemberSlug, roomId } = args;
+  const { token, roomId } = args;
   const objectRoomId = new ObjectId(roomId);
   //Check arguments
-  if (!newMemberSlug.trim()) throw new Error("Title must be provided")
-
+  if (!roomId.trim()) throw new Error("roomId must be provided")
+  //Verify token and get slug
+  const newMemberSlug = await getSlugByToken(token)
   //Start transcation
   const session = client.startSession();
   session.startTransaction();

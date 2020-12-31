@@ -1,12 +1,16 @@
 import { ObjectId } from "mongodb";
 import { RoomTypes } from "../../../models/Room";
 import { collectionNames, db } from "../../../mongo";
+import { getSlugByToken } from "../../../ulti";
 
 const get_other_public_rooms = async (root: any, args: any, ctx: any): Promise<any> => {
     console.log("======GET OTHER PUBLIC ROOMS=====");
     //Get arguments
     console.log({ args });
-    const { slug } = args;
+    const { token } = args;
+    //Verify token and get slug
+    if (!token.trim()) throw new Error("token must be provided")
+    const slug = await getSlugByToken(token)
     try {
         //Check member data
         const membersData = await db

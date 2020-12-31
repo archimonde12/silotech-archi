@@ -12,21 +12,22 @@ var packageDefinition = protoLoader.loadSync(PROTO_PATH, {
     oneofs: true,
 });
 
-var account_service_proto = grpc.loadPackageDefinition(packageDefinition).AccountService;
-console.log({ account_service_proto })
+var account_service_proto = grpc.loadPackageDefinition(packageDefinition);
 var target = "192.168.1.250:7001";
 var client = new account_service_proto.BrickService(
     target,
     grpc.credentials.createInsecure()
 );
-console.dir({ client: client.Call.requestType })
 
-const clientVerifyAuth = () => {
+const clientLogin = () => {
     return new Promise<any>((resolve, reject) => {
-
+        let params = {
+            username: 'hoan001',
+            password: 'Hoan123'
+        }
         let request = {
-            method: "user_verify_auth_token",
-            params: `{\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzbHVnIjoiaG9hbjAwMSIsInR5cGUiOiJzbHVnIiwiZXhwIjoxNjEwNDQ1NzYxLCJpYXQiOjE2MDkxNDk3NjF9.leQK5fCB8_0zw8IL8v7pJQPY9mTvPX4uXX3Mj4FDE2U\"}`
+            method: "user_login",
+            params: JSON.stringify(params)
         }
         console.log({ request })
         client.Call(request, (error, response) => {
@@ -37,13 +38,36 @@ const clientVerifyAuth = () => {
     })
 }
 
+const AccountService = (method: string, params: any) => {
+    return new Promise<any>((resolve, reject) => {
+        const request = { method, params: JSON.stringify(params) }
+        console.log({ request })
+        client.Call(request, (error, response) => {
+            if (error) return reject()
+            resolve(response)
+        })
+    })
+}
+
 export async function clientMain() {
     try {
-        let response = await clientVerifyAuth()
+        let response = await clientLogin()
         console.log({ response })
     } catch (err) {
         console.log({ err })
     }
 }
 
-clientMain();
+export async function VerifyToken(token) {
+    try {
+        let response = await AccountService('user_verify_auth_token', { token })
+        console.log({response})
+        if(!response) throw new Error("token invalid!") 
+        return response
+    } catch (err) {
+        console.log({ err })
+    }
+}
+
+
+

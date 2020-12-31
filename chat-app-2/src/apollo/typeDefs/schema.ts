@@ -101,74 +101,75 @@ export const typeDefs = gql`
 
   type Query {
     # Message
-    get_messages_in_room(sender: String, reciver: String!, limit: Int, skip:Int): [Message]
+    get_messages_in_room(token: String, reciver: String!, limit: Int, skip:Int): [Message]
     # Room
     get_room_details(roomId: ObjectID!): Room
     get_all_rooms: [Room]
-    get_inbox_rooms(slug: String!, limit: Int, skip:Int):[InboxRoom]
+    get_inbox_rooms(token: String!, limit: Int, skip:Int):[InboxRoom]
     # Member
     get_all_members(roomId: ObjectID!): [Member]
     # Friend
-    get_all_friends(slug:String!):[User]
+    get_all_friends(token:String!,limit:Int,skip:Int):[User]
+    get_all_friend_requests(token:String!,limit:Int,skip:Int):[User]
   }
 
   type Mutation {
     # Room
     room_create(
-      slug: String!
+      token: String!
       title: String!
       startMemberSlugs: [String]!
       roomType: RoomType!
     ): ResultMessage!
-    room_delete(createrSlug: String!, roomId: ObjectID!): ResultMessage!
-    room_join(newMemberSlug: String!, roomId: ObjectID!): ResultMessage!
-    room_leave(memberSlug: String!, roomId: ObjectID!): ResultMessage!
+    room_delete(token: String!, roomId: ObjectID!): ResultMessage!
+    room_join(token: String!, roomId: ObjectID!): ResultMessage!
+    room_leave(token: String!, roomId: ObjectID!): ResultMessage!
     room_add(
-      admin: String!
+      token: String!
       roomId: ObjectID!
       addMemberSlugs: [String]!
     ): ResultMessage!
     room_remove(
-      admin: String!
+      token: String!
       roomId: ObjectID!
       removeMemberSlugs: [String!]
     ): ResultMessage!
     room_block(
-      admin: String!
+      token: String!
       roomId: ObjectID!
       blockMembersSlugs: [String!]
     ): ResultMessage!
     room_remove_block(
-      admin:String!
+      token:String!
       roomId:ObjectID!
       blockMemberSlug:String!
     ): ResultMessage!
     room_set_role(
-      master:String!
+      token:String!
       roomId:ObjectID!
       memberSlug:String!
       roleSet:MemberRole
     ):Member
     # Message
     message_send(
-      sender: String!
+      token: String!
       reciver: String!
       type: MessageType
       data: MessData
     ): ResultMessage!
 
     message_delete(
-      admin: String!
+      token: String!
       roomId: ObjectID!
       messageId: ObjectID!
     ): ResultMessage!
 
     # Friend
-    friend_send_request(senderSlug:String!,reciverSlug:String!):ResultMessage!
-    friend_accept_request(reciverSlug:String!,senderSlug:String!):ResultMessage!
-    friend_reject_request(reciverSlug:String!,senderSlug:String!):ResultMessage!
-    friend_block(reciverSlug:String!,senderSlug:String!):ResultMessage!
-    friend_block_remove(reciverSlug:String!,senderSlug:String!):ResultMessage!
+    friend_send_request(token:String!,reciverSlug:String!):ResultMessage!
+    friend_accept_request(token:String!,senderSlug:String!):ResultMessage!
+    friend_reject_request(token:String!,senderSlug:String!):ResultMessage!
+    friend_block(token:String!,senderSlug:String!):ResultMessage!
+    friend_block_remove(token:String!,senderSlug:String!):ResultMessage!
   }
 
   type Subscription {

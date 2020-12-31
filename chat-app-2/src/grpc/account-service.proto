@@ -1,5 +1,4 @@
 syntax = "proto3";
-package AccountService;
 
 service BrickService {
     rpc Call (Request) returns (Response) {}

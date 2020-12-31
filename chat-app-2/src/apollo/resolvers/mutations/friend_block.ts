@@ -1,13 +1,16 @@
 import { Friend } from "../../../models/Friend";
 import { collectionNames, db, client } from "../../../mongo";
+import { getSlugByToken } from "../../../ulti";
 
 const friend_block = async (root: any, args: any, ctx: any): Promise<any> => {
     console.log("======FRIEND BLOCK REQUEST=====");
     //Get arguments
     console.log({ args });
-    const { reciverSlug, senderSlug } = args;
+    const { token, senderSlug } = args;
     //Check arguments
-    if (!senderSlug.trim() || !reciverSlug.trim()) throw new Error("all arguments must be provided")
+    if (!senderSlug.trim() || !token.trim()) throw new Error("all arguments must be provided")
+   //Verify token and get slug
+   let reciverSlug = await getSlugByToken(token)
     //Start transaction
     const session = client.startSession()
     session.startTransaction()
@@ -33,8 +36,8 @@ const friend_block = async (root: any, args: any, ctx: any): Promise<any> => {
                 _friendRequestFrom: null,
                 _blockRequest: [reciverSlug]
             }
-            console.log({newFriendDocument})
-            const { insertedId } = await db.collection(collectionNames.friends).insertOne(newFriendDocument,{ session })
+            console.log({ newFriendDocument })
+            const { insertedId } = await db.collection(collectionNames.friends).insertOne(newFriendDocument, { session })
             if (!insertedId) {
                 await session.abortTransaction();
                 session.endSession();

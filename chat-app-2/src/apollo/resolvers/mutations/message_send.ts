@@ -2,21 +2,20 @@ import { ObjectId } from "mongodb";
 import { InboxRoom } from "../../../models/InboxRoom";
 import { Message, MessageInMongo } from "../../../models/Message";
 import { client, collectionNames, db } from "../../../mongo";
-import { checkRoomIdInMongoInMutation, createInboxRoomKey } from "../../../ulti";
+import { checkRoomIdInMongoInMutation, createInboxRoomKey, getSlugByToken } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
-import {clientMain} from "../../../grpc/account-service-client"
-import {decode} from "jsonwebtoken"
 
 const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======MESSAGE SEND=====");
   //Get arguments
   console.log({ args });
-  const { sender, reciver, type, data } = args;
+  const { token, reciver, type, data } = args;
   //Check arguments
-  if (!sender.trim() || !reciver.trim()) {
-    throw new Error("sender or reciver is empty")
+  if (!token.trim() || !reciver.trim()) {
+    throw new Error("token or reciver must be provided")
   }
-  //await clientMain()
+  //Verify token and get slug
+  let sender = await getSlugByToken(token)
   //Start transcation
   const session = client.startSession();
   session.startTransaction();
@@ -92,12 +91,12 @@ const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
       slug2: sender <= reciver ? sender : reciver
     }
     const checkFriend = await db.collection(collectionNames.friends).findOne(checkFriendQuery, { session })
-    if(!checkFriend||!checkFriend.isFriend){
+    if (!checkFriend || !checkFriend.isFriend) {
       await session.abortTransaction();
       session.endSession();
       throw new Error("must be a friend before start a conversation!");
     }
-    if(checkFriend.isBlock){
+    if (checkFriend.isBlock) {
       await session.abortTransaction();
       session.endSession();
       throw new Error("This conversation has been blocked");

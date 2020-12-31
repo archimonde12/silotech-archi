@@ -1,7 +1,10 @@
 import { genSaltSync, hash, hashSync, compareSync } from "bcrypt"
+import { Client } from "grpc"
 import md5 from "md5"
 import { ClientSession, ObjectID } from "mongodb"
 import { secretCombinePairKey } from "./config"
+import { VerifyToken } from "./grpc/account-service-client"
+import { User } from "./models/User"
 import { collectionNames, db } from "./mongo"
 
 export const createInboxRoomKey = async (slug1: string, slug2: string) => {
@@ -19,28 +22,51 @@ export const createInboxRoomKey = async (slug1: string, slug2: string) => {
     return combineEncoded
 }
 
-export const checkRoomIdInMongoInMutation = async (objectRoomId: ObjectID, session: ClientSession) => {
-    let RoomData = await db
-        .collection(collectionNames.rooms)
-        .findOne({ _id: objectRoomId }, { session });
-    console.log({ RoomData });
-    if (!RoomData) {
-        await session.abortTransaction();
-        session.endSession();
-        throw new Error("RoomId not exist");
+export const checkRoomIdInMongoInMutation = async (objectRoomId: ObjectID, session?: ClientSession) => {
+    try {
+        if (session) {
+            let RoomData = await db
+                .collection(collectionNames.rooms)
+                .findOne({ _id: objectRoomId }, { session });
+            console.log({ RoomData });
+            if (!RoomData) {
+                await session.abortTransaction();
+                session.endSession();
+                throw new Error("RoomId not exist");
+            }
+            return RoomData
+        }
+        let RoomData = await db
+            .collection(collectionNames.rooms)
+            .findOne({ _id: objectRoomId });
+        console.log({ RoomData });
+        return RoomData
     }
-    return RoomData
+    catch (e) {
+        throw e
+    }
 }
 
-export const testBcrypt = () => {
-    console.log("Test bcrypt")
-    const saltRounds = 10;
-    const myPlaintextPassword = 's0/\/\P4$$w0rD';
-    const someOtherPlaintextPassword = 'not_bacon';
-    const salt = genSaltSync(saltRounds);
-    console.log({salt})
-    const hash = hashSync(myPlaintextPassword, salt);
-    console.log({hash})
-    console.log({resultTrue:compareSync(myPlaintextPassword, hash)})
-    console.log({resultFalse:compareSync(someOtherPlaintextPassword, hash)})
+export const checkUsersInDatabase = async (slugs: string[], session?: ClientSession): Promise<string[]> => {
+    try {
+        if (slugs === []) return [];
+        //Check slugs in mongo
+        const usersInMongo: User[] = session
+            ? await db.collection(collectionNames.users).find({ slug: { $in: slugs } }, { session }).toArray()
+            : await db.collection(collectionNames.users).find({ slug: { $in: slugs } }).toArray()
+        console.log(usersInMongo)
+        const slugsInMongo = usersInMongo.map(user => user.slug)
+        console.log({ slugsInMongo })
+        return slugsInMongo
+    } catch (e) {
+        throw e
+    }
 }
+
+export const getSlugByToken = async (token: String): Promise<string> => {
+    if(!token.trim()) throw new Error("token must be provided!")
+    const tokenVerifyRes = await VerifyToken(token)
+    if (!tokenVerifyRes) throw new Error("token invalid!")
+    return tokenVerifyRes.result
+}
+

@@ -1,18 +1,19 @@
 import { ObjectId } from "mongodb";
 import { MemberRole } from "../../../models/Member";
 import { client, collectionNames, db } from "../../../mongo";
-import { checkRoomIdInMongoInMutation } from "../../../ulti";
+import { checkRoomIdInMongoInMutation, getSlugByToken } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
 const room_leave = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======ROOM LEAVE=====");
   //Get arguments
   console.log({ args });
-  const { memberSlug, roomId } = args;
+  const { token, roomId } = args;
   const objectRoomId = new ObjectId(roomId);
   //Check arguments
-  if (!memberSlug.trim()) throw new Error("memberSlug must be provided")
-
+  if (!roomId.trim()) throw new Error("roomId must be provided")
+  //Verify token and get slug
+  const memberSlug = await getSlugByToken(token)
   //Start transcation
   const session = client.startSession();
   session.startTransaction();
