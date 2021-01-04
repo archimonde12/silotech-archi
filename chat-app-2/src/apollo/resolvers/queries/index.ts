@@ -1,23 +1,25 @@
-import { get_all_members } from "./get_all_members"
-import { get_all_rooms } from "./get_all_rooms"
-import { get_messages_in_room } from "./get_messages_in_room"
-import { get_room_details } from "./get_room_details"
-import {get_other_public_rooms} from "./get_other_public_rooms"
-import {get_inbox_rooms} from "./get_inbox_rooms"
-import {get_all_friends} from "./get_all_friends"
-import {get_all_friend_requests} from "./get_all_friend_requests"
+import { chat_get_all_members } from "./chat_get_all_members"
+import { chat_get_all_rooms } from "./chat_get_all_rooms"
+import { chat_get_messages_in_room } from "./chat_get_messages_in_room"
+import { chat_get_room_details } from "./chat_get_room_details"
+import {chat_get_inbox_rooms} from "./chat_get_inbox_rooms"
+import {chat_get_all_friends} from "./chat_get_all_friends"
+import {chat_get_all_friend_requests} from "./chat_get_all_friend_requests"
+import {chat_search_users} from "./chat_search_users"
 const Query = {
+    //Search users
+    chat_search_users,
     //Room
-    get_all_rooms,
-    get_room_details,
-    get_inbox_rooms,
+    chat_get_all_rooms,
+    chat_get_room_details,
+    chat_get_inbox_rooms,
     //Message
-    get_messages_in_room,
+    chat_get_messages_in_room,
     //Member
-    get_all_members,
+    chat_get_all_members,
     //Friend
-    get_all_friends,
-    get_all_friend_requests
+    chat_get_all_friends,
+    chat_get_all_friend_requests
 };
 
 export { Query };

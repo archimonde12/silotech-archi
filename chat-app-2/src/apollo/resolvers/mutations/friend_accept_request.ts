@@ -8,12 +8,13 @@ const friend_accept_request = async (root: any, args: any, ctx: any): Promise<an
     try {
         console.log("======FRIEND ACCEPT REQUEST=====");
         //Get arguments
+        const token = ctx.req.headers.authorization
         console.log({ args });
-        const { token, senderSlug } = args;
+        const { senderSlug } = args;
         //Check arguments
-        if (!senderSlug.trim()) throw new Error("all arguments must be provided")
+        if (!token || !senderSlug || !senderSlug.trim()) throw new Error("all arguments must be provided")
         //Verify token and get slug
-        let reciverSlug = await getSlugByToken(token)
+        const reciverSlug = await getSlugByToken(token)
         //Check friend relationship exist and request has been sent
         const checkFriendQuery = {
             slug1: senderSlug > reciverSlug ? senderSlug : reciverSlug,
@@ -28,7 +29,8 @@ const friend_accept_request = async (root: any, args: any, ctx: any): Promise<an
             throw new Error("Accept fail!")
         }
         //Update friend docments
-        const updateDoc = { $set: { _friendRequestFrom: null, isFriend: true } }
+        const now = new Date()
+        const updateDoc = { $set: { _friendRequestFrom: null, isFriend: true, beFriendAt: now } }
         const { modifiedCount } = await db.collection(collectionNames.friends).updateOne(checkFriendQuery, updateDoc, { session })
         if (modifiedCount !== 1) {
             await session.abortTransaction();

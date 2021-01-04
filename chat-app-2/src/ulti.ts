@@ -7,7 +7,7 @@ import { VerifyToken } from "./grpc/account-service-client"
 import { User } from "./models/User"
 import { collectionNames, db } from "./mongo"
 
-export const createInboxRoomKey = async (slug1: string, slug2: string) => {
+export const createInboxRoomKey = (slug1: string, slug2: string):string => {
     if (slug1 > slug2) {
         let combine = [slug1, secretCombinePairKey, slug2]
         let combineString = JSON.stringify(combine)
@@ -64,7 +64,7 @@ export const checkUsersInDatabase = async (slugs: string[], session?: ClientSess
 }
 
 export const getSlugByToken = async (token: String): Promise<string> => {
-    if(!token.trim()) throw new Error("token must be provided!")
+    if(!token||!token.trim()) throw new Error("token must be provided!")
     const tokenVerifyRes = await VerifyToken(token)
     if (!tokenVerifyRes) throw new Error("token invalid!")
     return tokenVerifyRes.result

@@ -8,11 +8,13 @@ const room_remove = async (root: any, args: any, ctx: any): Promise<any> => {
     console.log("======ROOM REMOVE=====");
     //Get arguments
     console.log({ args });
-    const { token, roomId, removeMemberSlugs } = args;
+    const token = ctx.req.headers.authorization
+    const { roomId, removeMemberSlugs } = args;
     const objectRoomId = new ObjectId(roomId);
     const totalMemberRemove = removeMemberSlugs.length
 
     //Check arguments
+    if(!token||!roomId||!removeMemberSlugs) throw new Error("all arguments must be provided")
     if (!roomId.trim()) throw new Error("roomId must be provided")
     //Verify token and get slug
     const admin = await getSlugByToken(token)
@@ -25,17 +27,12 @@ const room_remove = async (root: any, args: any, ctx: any): Promise<any> => {
     try {
 
         //Check roomId exist
-        let RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
+        const RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
 
         //Check master in removeMembers
         if (removeMemberSlugs.includes(RoomData.createdBy.slug)) throw new Error("Cannot remove the master")
 
         //Check room type
-        if (RoomData.type === `inbox`) {
-            await session.abortTransaction();
-            session.endSession();
-            throw new Error("Cannot remove! Because this room is inboxRoom ");
-        }
         if (RoomData.type === `global`) {
             await session.abortTransaction();
             session.endSession();
@@ -44,8 +41,8 @@ const room_remove = async (root: any, args: any, ctx: any): Promise<any> => {
 
         //Check member
         const checkOldMembersArray = [...removeMemberSlugs, admin]
-        let checkOldMemFilter = { $and: [{ roomId: objectRoomId }, { slug: { $in: checkOldMembersArray } }] }
-        let checkOldMembers = await db.collection(collectionNames.members).find(checkOldMemFilter, { session }).toArray()
+        const checkOldMemFilter = { $and: [{ roomId: objectRoomId }, { slug: { $in: checkOldMembersArray } }] }
+        const checkOldMembers = await db.collection(collectionNames.members).find(checkOldMemFilter, { session }).toArray()
         console.log({ checkOldMembers })
         if (checkOldMembers.length !== checkOldMembersArray.length) {
             await session.abortTransaction();
@@ -54,11 +51,11 @@ const room_remove = async (root: any, args: any, ctx: any): Promise<any> => {
         }
 
         //Check admin role
-        let removeMemberData = checkOldMembers.filter(member => member.slug !== admin)
+        const removeMemberData = checkOldMembers.filter(member => member.slug !== admin)
         console.log({ removeMemberData })
-        let adminData = checkOldMembers.filter(member => member.slug === admin)[0]
+        const adminData = checkOldMembers.filter(member => member.slug === admin)[0]
         console.log({ adminData })
-        let isAdminInRemoveMember: boolean = !removeMemberData.every(member => member.role === MemberRole.member.name)
+        const isAdminInRemoveMember: boolean = !removeMemberData.every(member => member.role === MemberRole.member.name)
         console.log({ isAdminInRemoveMember })
         if (isAdminInRemoveMember && adminData.role !== MemberRole.master.name) {
             await session.abortTransaction();
@@ -72,8 +69,8 @@ const room_remove = async (root: any, args: any, ctx: any): Promise<any> => {
         }
 
         //Remove member doc
-        let deleteQuery = { $and: [{ roomId: objectRoomId }, { slug: { $in: removeMemberSlugs } }] }
-        let { deletedCount } = await db.collection(collectionNames.members).deleteMany(deleteQuery, { session })
+        const deleteQuery = { $and: [{ roomId: objectRoomId }, { slug: { $in: removeMemberSlugs } }] }
+        const { deletedCount } = await db.collection(collectionNames.members).deleteMany(deleteQuery, { session })
         console.log({ deletedCount })
 
         //Update room doc

@@ -8,9 +8,11 @@ const room_leave = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======ROOM LEAVE=====");
   //Get arguments
   console.log({ args });
-  const { token, roomId } = args;
+  const token = ctx.req.headers.authorization
+  const { roomId } = args;
   const objectRoomId = new ObjectId(roomId);
   //Check arguments
+  if(!token||!roomId) throw new Error("all arguments must be provided")
   if (!roomId.trim()) throw new Error("roomId must be provided")
   //Verify token and get slug
   const memberSlug = await getSlugByToken(token)
@@ -19,9 +21,9 @@ const room_leave = async (root: any, args: any, ctx: any): Promise<any> => {
   session.startTransaction();
   try {
     //Check roomId exist
-    let RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
+    const RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
     //Check newMemberSlug exist
-    let checkSlug = await db
+    const checkSlug = await db
       .collection(collectionNames.users)
       .findOne({ slug: memberSlug }, { session });
     console.log({ checkSlug });
@@ -30,14 +32,8 @@ const room_leave = async (root: any, args: any, ctx: any): Promise<any> => {
       session.endSession();
       throw new Error(`${memberSlug} not exist in user database`);
     }
-    //Check room type
-    if (RoomData.type === `inbox`) {
-      await session.abortTransaction();
-      session.endSession();
-      throw new Error("Cannot leave! Because this room is inboxRoom ");
-    }
     //Check member
-    let memberData = await db
+    const memberData = await db
       .collection(collectionNames.members)
       .findOne({ $and: [{ roomId: objectRoomId }, { slug: memberSlug }] }, { session });
     console.log({ memberData });

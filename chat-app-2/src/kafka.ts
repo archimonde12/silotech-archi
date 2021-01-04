@@ -1,18 +1,18 @@
 import { Kafka } from "kafkajs";
+import { kafkaBroker, kafkaClientId } from "./config";
 import { collectionNames, db } from "./mongo";
 import { checkUsersInDatabase } from "./ulti";
-// import { coinKafkaConfig } from "./config";
 
 const brickKafka = new Kafka({
-    clientId: 'chat-api-local', //coinKafkaConfig.clientId,
-    brokers: ['192.168.1.250:9092'],//coinKafkaConfig.brokers?.split(',') || [],
+    clientId: kafkaClientId, //coinKafkaConfig.clientId,
+    brokers: [kafkaBroker],//coinKafkaConfig.brokers?.split(',') || [],
     ssl: false,
     sasl: undefined,
     connectionTimeout: 5000,
     requestTimeout: 60000,
 })
 
-const brickConsumer = brickKafka.consumer({ groupId: 'chat-api-local' })
+const brickConsumer = brickKafka.consumer({ groupId: kafkaClientId })
 
 const connectBrickConsumer = async () => {
     try {

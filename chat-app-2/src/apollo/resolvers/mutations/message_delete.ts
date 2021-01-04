@@ -7,7 +7,10 @@ const message_delete = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======MESSAGE SEND=====");
   //Get arguments
   console.log({ args });
-  const { token, roomId, messageId } = args;
+  const token = ctx.req.headers.authorization
+  const { roomId, messageId } = args;
+  //Check arguments
+  if(!token || !messageId || !roomId) throw new Error("all arguments must be provided")
   const objectRoomId = new ObjectId(roomId);
   const objectMessageId = new ObjectId(messageId);
   //Verify token and get slug
@@ -17,7 +20,7 @@ const message_delete = async (root: any, args: any, ctx: any): Promise<any> => {
   session.startTransaction();
   try {
     //Check roomId exist
-    let RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
+    const RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
     //Check master
     if (master !== RoomData.createdBy.slug) {
       await session.abortTransaction();
@@ -25,7 +28,7 @@ const message_delete = async (root: any, args: any, ctx: any): Promise<any> => {
       throw new Error(`${master} is not a master of this room`);
     }
     //Check message
-    let MessageData = await db
+    const MessageData = await db
       .collection(collectionNames.messages)
       .findOne({ _id: objectMessageId }, { session });
     console.log({ MessageData });

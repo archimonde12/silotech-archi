@@ -1,4 +1,5 @@
-import { ObjectId } from "mongodb";
+import { ClientSession, ObjectId } from "mongodb";
+import { GLOBAL_KEY } from "../../../config";
 import { InboxRoom } from "../../../models/InboxRoom";
 import { Message, MessageInMongo } from "../../../models/Message";
 import { client, collectionNames, db } from "../../../mongo";
@@ -8,28 +9,100 @@ import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======MESSAGE SEND=====");
   //Get arguments
-  console.log({ args });
-  const { token, reciver, type, data } = args;
+  const token = ctx.req.headers.authorization
+  const { sendTo, type, data } = args;
+  const { roomType, reciver } = sendTo
+  if (!token || !roomType || !type || !data) throw new Error("all arguments must be provided")
   //Check arguments
-  if (!token.trim() || !reciver.trim()) {
-    throw new Error("token or reciver must be provided")
+  if (!token.trim()) {
+    throw new Error("token must be provided")
   }
   //Verify token and get slug
-  let sender = await getSlugByToken(token)
+  const sender = await getSlugByToken(token)
   //Start transcation
   const session = client.startSession();
   session.startTransaction();
-  //let decoded=decode("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzbHVnIjoiaG9hbjAwMSIsInR5cGUiOiJzbHVnIiwiZXhwIjoxNjEwNDQ1NzYxLCJpYXQiOjE2MDkxNDk3NjF9.leQK5fCB8_0zw8IL8v7pJQPY9mTvPX4uXX3Mj4FDE2U")
-  //console.log({decoded})
+  let result: any
   try {
-    //Public Message handler
-    if (ObjectId.isValid(reciver)) {
+    switch (roomType) {
+      case 'global':
+        result = await sendMessToGlobal(sender, type, data, session)
+        if (!result) {
+          await session.abortTransaction();
+          session.endSession();
+          throw new Error(`send message to user fail!`);
+        }
+        return result
+      case 'publicRoom':
+        result = await sendMessToPublicRoom(sender, reciver, type, data, session)
+        if (!result) {
+          await session.abortTransaction();
+          session.endSession();
+          throw new Error(`send message to publicRoom fail!`);
+        }
+        return result
+      case 'inbox':
+        result = await sendMessToUser(sender, reciver, type, data, session)
+        if (!result) {
+          await session.abortTransaction();
+          session.endSession();
+          throw new Error(`send message to user fail!`);
+        }
+        return result
+      default: throw new Error('reciverType must be provided')
+    }
+  } catch (e) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+      session.endSession();
+    }
+    throw e;
+  }
+};
+const sendMessToGlobal = async (sender: string, type: string, data: any, session: ClientSession) => {
+  try {
+    //Add new message doc
+    const now = new Date();
+    const insertNewMessageDoc: Message = {
+      sentAt: now,
+      roomKey: GLOBAL_KEY,
+      type,
+      data,
+      createdBy: {
+        slug: sender,
+      },
+    };
+    const { insertedId } = await db
+      .collection(collectionNames.messages)
+      .insertOne(insertNewMessageDoc, { session });
+    console.log({ insertedId });
+    const dataResult: MessageInMongo = { ...insertNewMessageDoc, _id: insertedId }
+    await session.commitTransaction();
+    session.endSession();
+    pubsub.publish(LISTEN_CHANEL, { room_listen: insertNewMessageDoc });
+    return {
+      success: true,
+      message: `send message success!`,
+      data: dataResult,
+    };
+  } catch (e) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+      session.endSession();
+    }
+    throw e
+  }
+}
+const sendMessToPublicRoom = async (sender: string, reciver: string, type: string, data: any, session: ClientSession) => {
+  try {
+    //Public Room  Message 
+    console.log({ reciver })
+    if (ObjectId.isValid(reciver) && reciver && reciver.trim()) {
       const objectRoomId = new ObjectId(reciver);
-
       //Check roomId exist
       await checkRoomIdInMongoInMutation(objectRoomId, session)
       //Check member
-      let memberData = await db
+      const memberData = await db
         .collection(collectionNames.members)
         .findOne({ $and: [{ roomId: objectRoomId }, { slug: sender }] }, { session });
       console.log({ memberData });
@@ -72,9 +145,28 @@ const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
         data: dataResult,
       };
     }
-    //Inbox Message handler
+    await session.abortTransaction();
+    session.endSession();
+    throw new Error("roomID invalid");
+  } catch (e) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+      session.endSession();
+    }
+    throw e
+  }
+}
+const sendMessToUser = async (sender: string, reciver: string, type: string, data: any, session: ClientSession) => {
+  try {
+    if (!reciver || !reciver.trim()) {
+      await session.abortTransaction();
+      session.endSession();
+      throw new Error("reciver username must be provided");
+    }
+    //Inbox Message 
     const roomKey = await createInboxRoomKey(sender, reciver)
     const checkSlugs = [sender, reciver]
+
     //Check sender and reciver exist in database
     const findUsersRes = await db
       .collection(collectionNames.users)
@@ -94,7 +186,7 @@ const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
     if (!checkFriend || !checkFriend.isFriend) {
       await session.abortTransaction();
       session.endSession();
-      throw new Error("must be a friend before start a conversation!");
+      throw new Error("must be friend before start a conversation!");
     }
     if (checkFriend.isBlock) {
       await session.abortTransaction();
@@ -132,19 +224,20 @@ const message_send = async (root: any, args: any, ctx: any): Promise<any> => {
     }
     await session.commitTransaction();
     session.endSession();
-    pubsub.publish(LISTEN_CHANEL, { room_listen: insertNewMessageDoc });
+    pubsub.publish(LISTEN_CHANEL, { inbox_room_listen: insertNewMessageDoc });
 
     return {
       success: true,
       message: `send message success!`,
       data: dataResult,
     };
+
   } catch (e) {
     if (session.inTransaction()) {
       await session.abortTransaction();
       session.endSession();
     }
-    throw e;
+    throw e
   }
-};
+}
 export { message_send };

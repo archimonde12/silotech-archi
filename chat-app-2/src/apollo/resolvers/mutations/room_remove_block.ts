@@ -7,9 +7,11 @@ const room_remove_block = async (root: any, args: any, ctx: any): Promise<any> =
     console.log("======ROOM REMOVE BLOCK=====");
     //Get arguments
     console.log({ args });
-    const { token, roomId, blockMemberSlug } = args;
+    const token = ctx.req.headers.authorization
+    const { roomId, blockMemberSlug } = args;
     const objectRoomId = new ObjectId(roomId);
     //Check arguments
+    if(!token||!roomId||!blockMemberSlug) throw new Error("all arguments must be provided")
     if (!roomId.trim()) throw new Error("roomId must be provided")
     //Verify token and get slug
     const admin = await getSlugByToken(token)
@@ -20,7 +22,7 @@ const room_remove_block = async (root: any, args: any, ctx: any): Promise<any> =
     session.startTransaction();
     try {
         //Check roomId exist
-        let RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
+        const RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
 
         //Check admin role
         const adminData = await db.collection(collectionNames.members).findOne({ $and: [{ slug: admin }, { roomId: objectRoomId }] })

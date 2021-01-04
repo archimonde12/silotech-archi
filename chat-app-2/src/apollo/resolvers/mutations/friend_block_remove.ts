@@ -8,11 +8,12 @@ const friend_block_remove = async (root: any, args: any, ctx: any): Promise<any>
         console.log("======FRIEND BLOCK REMOVE=====");
         //Get arguments
         console.log({ args });
-        const { token, senderSlug } = args;
+        const token = ctx.req.headers.authorization
+        const { senderSlug } = args;
         //Check arguments
-        if (!senderSlug.trim() || !token.trim()) throw new Error("all arguments must be provided")
-       //Verify token and get slug
-       let reciverSlug = await getSlugByToken(token)
+        if (!token || !senderSlug || !senderSlug.trim() || !token.trim()) throw new Error("all arguments must be provided")
+        //Verify token and get slug
+        const reciverSlug = await getSlugByToken(token)
         //Check sender and reciver exist in database
         const findUsersRes = await db
             .collection(collectionNames.users)

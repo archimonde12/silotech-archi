@@ -12,9 +12,10 @@ const room_create = async (root: any, args: any, ctx: any): Promise<any> => {
     console.log("======ROOM CREATE=====");
     //Get arguments
     console.log({ args });
-    const { token, title, startMemberSlugs, roomType } = args;
-
+    const token = ctx.req.headers.authorization
+    const { title, startMemberSlugs, roomType } = args;
     //Check arguments
+    if(!token||!title||!roomType) throw new Error("all arguments must be provided")
     if (!title.trim()) throw new Error("Title must be provided")
     //Verify token and get slug
     const slug = await getSlugByToken(token)
@@ -67,7 +68,7 @@ const room_create = async (root: any, args: any, ctx: any): Promise<any> => {
     console.log(insertedId);
 
     //Insert member docs
-    let insertMemberDocs = startMemberSlugs.map((slug) => ({
+    const insertMemberDocs = startMemberSlugs.map((slug) => ({
       slug,
       roomId: insertedId,
       joinedAt: now,
@@ -81,7 +82,7 @@ const room_create = async (root: any, args: any, ctx: any): Promise<any> => {
     });
     console.log(insertMemberDocs);
     await db.collection(collectionNames.members).insertMany(insertMemberDocs, { session });
-    let dataResult: RoomInMongo = { ...insertRoomDoc, _id: insertedId };
+    const dataResult: RoomInMongo = { ...insertRoomDoc, _id: insertedId };
     await session.commitTransaction();
     session.endSession();
     return {

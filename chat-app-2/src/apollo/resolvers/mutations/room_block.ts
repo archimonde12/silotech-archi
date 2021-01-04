@@ -9,11 +9,13 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
 
   //Get arguments
   console.log({ args });
-  const { token, roomId, blockMembersSlugs } = args;
+  const token = ctx.req.headers.authorization
+  const {  roomId, blockMembersSlugs } = args;
   const objectRoomId = new ObjectId(roomId);
   const totalMemberBlock = blockMembersSlugs.length;
 
   //Check arguments
+  if(!token||!roomId||!blockMembersSlugs) throw new Error("all arguments must be provided")
   if (!roomId.trim()) throw new Error("roomId must be provided")
   //Verify token
   const admin = await getSlugByToken(token)
@@ -26,7 +28,7 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
   try {
 
     //Check roomId exist
-    let RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
+    const RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
 
     //Check master in blockMembers
     if (blockMembersSlugs.includes(RoomData.createdBy.slug)) throw new Error("Cannot block the master")
@@ -40,8 +42,8 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
 
     //Check member
     const checkOldMembersArray = [...blockMembersSlugs, admin]
-    let checkOldMemFilter = { $and: [{ roomId: objectRoomId }, { slug: { $in: checkOldMembersArray } }] }
-    let checkOldMembers = await db.collection(collectionNames.members).find(checkOldMemFilter, { session }).toArray()
+    const checkOldMemFilter = { $and: [{ roomId: objectRoomId }, { slug: { $in: checkOldMembersArray } }] }
+    const checkOldMembers = await db.collection(collectionNames.members).find(checkOldMemFilter, { session }).toArray()
     console.log({ checkOldMembers })
     if (checkOldMembers.length !== checkOldMembersArray.length) {
       await session.abortTransaction();
@@ -50,11 +52,11 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
     }
 
     //Check admin role
-    let blockMemberData = checkOldMembers.filter(member => member.slug !== admin)
+    const blockMemberData = checkOldMembers.filter(member => member.slug !== admin)
     console.log({ blockMemberData })
-    let adminData = checkOldMembers.filter(member => member.slug === admin)[0]
+    const adminData = checkOldMembers.filter(member => member.slug === admin)[0]
     console.log({ adminData })
-    let isAdminInBlockMembers: boolean = !blockMemberData.every(member => member.role === MemberRole.member.name)
+    const isAdminInBlockMembers: boolean = !blockMemberData.every(member => member.role === MemberRole.member.name)
     console.log({ isAdminInBlockMembers })
     if (isAdminInBlockMembers && adminData.role !== MemberRole.master.name) {
       await session.abortTransaction();
@@ -68,8 +70,8 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
     }
 
     //Remove member doc
-    let deleteQuery = { $and: [{ roomId: objectRoomId }, { slug: { $in: blockMembersSlugs } }] }
-    let { deletedCount } = await db
+    const deleteQuery = { $and: [{ roomId: objectRoomId }, { slug: { $in: blockMembersSlugs } }] }
+    const { deletedCount } = await db
       .collection(collectionNames.members)
       .deleteMany(deleteQuery, { session });
     console.log({ deletedCount });
@@ -90,7 +92,7 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
       slug,
       roomId: objectRoomId,
     }));
-    let insertRes = await db
+    const insertRes = await db
       .collection(collectionNames.blockMembers)
       .insertMany(insertBlockMemberDocs, { session });
     console.log(`${insertRes.insertedCount} docs has been added!`);

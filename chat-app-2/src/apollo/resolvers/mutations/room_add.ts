@@ -8,14 +8,16 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
   console.log("======ROOM ADD=====");
   //Get arguments
   console.log({ args });
-  const { token, roomId, addMemberSlugs } = args;
+  const token = ctx.req.headers.authorization
+  const { roomId, addMemberSlugs } = args;
   const objectRoomId = new ObjectId(roomId);
   const totalAddMember = addMemberSlugs.length;
   //Check arguments
+  if(!token||!roomId||!addMemberSlugs) throw new Error("all arguments must be provided")
   if (!roomId.trim()) throw new Error("roomId must be provided")
   if (addMemberSlugs.length===0) throw new Error("add Member must be provided")
   //Verify token and get slug
-  let admin =await getSlugByToken(token)
+  const admin =await getSlugByToken(token)
   if (addMemberSlugs.length === 0) throw new Error("addMemberSlugs must be provided")
   if (addMemberSlugs.includes(admin)) throw new Error("Cannot add yourself");
 
@@ -24,13 +26,8 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
   session.startTransaction();
   try {
     //Check roomId exist
-    let RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
+    const RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
     //Check room type
-    if (RoomData.type === `inbox`) {
-      await session.abortTransaction();
-      session.endSession();
-      throw new Error("Cannot add! Because this room is inboxRoom ");
-    }
     if (RoomData.type === `global`) {
       await session.abortTransaction();
       session.endSession();
@@ -38,7 +35,7 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
     }
 
     //Check addMemberSlugs exist
-    let checkSlug = await db
+    const checkSlug = await db
       .collection(collectionNames.users)
       .find({ slug: { $in: addMemberSlugs } }, { session })
       .toArray();
@@ -54,7 +51,7 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
 
     //Check member
     const checkOldMembersArray = [...addMemberSlugs, admin]
-    let checkOldMembers = await db
+    const checkOldMembers = await db
       .collection(collectionNames.members)
       .find({
         $and: [{ roomId: objectRoomId }, { slug: { $in: checkOldMembersArray } }],
@@ -67,7 +64,7 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
       throw new Error(`Someone has already been a member`);
     }
     //Check block
-    let checkBlockMembers = await db
+    const checkBlockMembers = await db
       .collection(collectionNames.blockMembers)
       .find({
         $and: [{ roomId: objectRoomId }, { slug: { $in: checkOldMembersArray } }],
@@ -93,7 +90,7 @@ const room_add = async (root: any, args: any, ctx: any): Promise<any> => {
       joinedAt: now,
       role: MemberRole.member.name,
     }));
-    let insertRes = await db
+    const insertRes = await db
       .collection(collectionNames.members)
       .insertMany(insertMemberDocs, { session });
     console.log(insertRes);

@@ -9,7 +9,9 @@ const room_set_role = async (root: any, args: any, ctx: any): Promise<any> => {
 
     //Get arguments
     console.log({ args })
-    const { token, roomId, memberSlug, roleSet } = args;
+    const token = ctx.req.headers.authorization
+    const { roomId, memberSlug, roleSet } = args;
+    if(!token||!roomId||!memberSlug||!roleSet) throw new Error("all arguments must be provided")
     const roleToSet = roleSet === "admin" ? MemberRole.admin.name : MemberRole.member.name
     console.log({ roleToSet })
     const objectRoomId = new ObjectId(roomId);
@@ -28,7 +30,7 @@ const room_set_role = async (root: any, args: any, ctx: any): Promise<any> => {
     try {
 
         //Check roomId exist
-        let RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
+        const RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
 
         //Check master
         if (master !== RoomData.createdBy.slug) {
@@ -38,8 +40,8 @@ const room_set_role = async (root: any, args: any, ctx: any): Promise<any> => {
         }
 
         //Check member
-        let checkOldMemFilter = { $and: [{ roomId: objectRoomId }, { slug: { $in: [master, memberSlug] } }] }
-        let checkOldMembers = await db.collection(collectionNames.members).find(checkOldMemFilter, { session }).toArray()
+        const checkOldMemFilter = { $and: [{ roomId: objectRoomId }, { slug: { $in: [master, memberSlug] } }] }
+        const checkOldMembers = await db.collection(collectionNames.members).find(checkOldMemFilter, { session }).toArray()
         console.log({ checkOldMembers })
         if (checkOldMembers.length !== 2) {
             await session.abortTransaction();
@@ -53,7 +55,7 @@ const room_set_role = async (root: any, args: any, ctx: any): Promise<any> => {
         console.log({ modifiedCount: updateRoleRes.modifiedCount })
         await session.commitTransaction();
         session.endSession();
-        let listenData = {
+        const listenData = {
             roomKey: roomId.toString(),
             content: `${memberSlug} became ${roleToSet}!`
         }

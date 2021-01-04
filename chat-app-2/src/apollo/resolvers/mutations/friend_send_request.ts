@@ -6,9 +6,10 @@ const friend_send_request = async (root: any, args: any, ctx: any): Promise<any>
     console.log("======FRIEND REQUEST SEND=====");
     //Get arguments
     console.log({ args });
-    const { token, reciverSlug } = args;
+    const token = ctx.req.headers.authorization
+    const { reciverSlug } = args;
     //Check arguments
-    if (!token.trim() || !reciverSlug.trim()) throw new Error("all arguments must be provided")
+    if (!token || !reciverSlug || !token.trim() || !reciverSlug.trim()) throw new Error("all arguments must be provided")
     //Verify token and get slug
     const senderSlug = await getSlugByToken(token)
     //Start transaction
@@ -33,7 +34,7 @@ const friend_send_request = async (root: any, args: any, ctx: any): Promise<any>
             if (checkFriend.isBlock) {
                 await session.abortTransaction();
                 session.endSession();
-                throw new Error("cant not sent request because this friend relationship has been block")
+                throw new Error("can not sent request because this friend relationship has been block")
             }
             //Check friend Request From
             if (checkFriend._friendRequestFrom === senderSlug) {
@@ -52,7 +53,7 @@ const friend_send_request = async (root: any, args: any, ctx: any): Promise<any>
             if (updateRes.modifiedCount !== 1) {
                 await session.abortTransaction();
                 session.endSession();
-                throw new Error("Update Friends Collection Failed!")
+                throw new Error("Update friends collection failed!")
             }
             await session.commitTransaction()
             await session.endSession()
@@ -64,6 +65,18 @@ const friend_send_request = async (root: any, args: any, ctx: any): Promise<any>
         }
         //Create new friend document
         const now = new Date()
+        const checkSlugs = [senderSlug, reciverSlug]
+
+        //Check sender and reciver exist in database
+        const findUsersRes = await db
+            .collection(collectionNames.users)
+            .find({ slug: { $in: checkSlugs } })
+            .toArray();
+        if (findUsersRes.length !== 2) {
+            await session.abortTransaction();
+            session.endSession();
+            throw new Error("someone not exist in database!");
+        }
         const newFriendDocument: Friend = {
             slug1: senderSlug > reciverSlug ? senderSlug : reciverSlug,
             slug2: senderSlug <= reciverSlug ? senderSlug : reciverSlug,

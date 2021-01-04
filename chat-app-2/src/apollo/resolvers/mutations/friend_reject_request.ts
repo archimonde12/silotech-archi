@@ -5,11 +5,12 @@ const friend_reject_request = async (root: any, args: any, ctx: any): Promise<an
     console.log("======FRIEND REJECT REQUEST=====");
     //Get arguments
     console.log({ args });
-    const { token, senderSlug } = args;
+    const token = ctx.req.headers.authorization
+    const { senderSlug } = args;
     //Check arguments
-    if (!senderSlug.trim() || !token.trim()) throw new Error("all arguments must be provided")
+    if (!token || !senderSlug || !senderSlug.trim() || !token.trim()) throw new Error("all arguments must be provided")
     //Verify token and get slug
-    let reciverSlug = await getSlugByToken(token)
+    const reciverSlug = await getSlugByToken(token)
     //Start transaction
     const session = client.startSession()
     session.startTransaction()
