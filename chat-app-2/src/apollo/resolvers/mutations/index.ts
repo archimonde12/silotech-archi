@@ -1,39 +1,39 @@
-import { room_create } from "./room_create";
-import { room_delete } from "./room_delete";
-import { room_join } from "./room_join";
-import { room_leave } from "./room_leave";
-import { room_add } from "./room_add";
-import { room_remove } from "./room_remove";
-import { room_block } from "./room_block";
-import { message_send } from "./message_send";
-import { message_delete } from "./message_delete";
-import {room_set_role} from "./room_set_role"
-import {room_remove_block} from "./room_remove_block"
-import {friend_accept_request} from "./friend_accept_request"
-import {friend_block} from "./friend_block"
-import {friend_reject_request} from "./friend_reject_request"
-import {friend_send_request} from "./friend_send_request"
-import {friend_block_remove} from "./friend_block_remove"
+import { chat_room_create } from "./chat_room_create";
+import { chat_room_delete } from "./chat_room_delete";
+import { chat_room_join } from "./chat_room_join";
+import { chat_room_leave } from "./chat_room_leave";
+import { chat_room_add } from "./chat_room_add";
+import { chat_room_remove } from "./chat_room_remove";
+import { chat_room_block } from "./chat_room_block";
+import { chat_message_send } from "./chat_message_send";
+import { chat_message_delete } from "./chat_message_delete";
+import { chat_room_set_role } from "./chat_room_set_role";
+import { chat_room_remove_block } from "./chat_room_remove_block";
+import { chat_friend_accept_request } from "./chat_friend_accept_request";
+import { chat_friend_block } from "./chat_friend_block";
+import { chat_friend_reject_request } from "./chat_friend_reject_request";
+import { chat_friend_send_request } from "./chat_friend_send_request";
+import { chat_friend_block_remove } from "./chat_friend_block_remove";
 
 const Mutation = {
   //room
-  room_create,
-  room_delete,
-  room_join,
-  room_leave,
-  room_add,
-  room_remove,
-  room_block,
-  room_remove_block,
-  room_set_role,
+  chat_room_create,
+  chat_room_delete,
+  chat_room_join,
+  chat_room_leave,
+  chat_room_add,
+  chat_room_remove,
+  chat_room_block,
+  chat_room_remove_block,
+  chat_room_set_role,
   //message
-  message_send,
-  message_delete,
+  chat_message_send,
+  chat_message_delete,
   //friend
-  friend_send_request,
-  friend_accept_request,
-  friend_reject_request,
-  friend_block,
-  friend_block_remove,
+  chat_friend_send_request,
+  chat_friend_accept_request,
+  chat_friend_reject_request,
+  chat_friend_block,
+  chat_friend_block_remove,
 };
 export { Mutation };

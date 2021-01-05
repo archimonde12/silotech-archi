@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import { RoomTypes } from "../../../models/Room";
 import { collectionNames, db } from "../../../mongo";
 
-const get_all_rooms = async (root: any, args: any, ctx: any): Promise<any> => {
+const chat_get_all_rooms = async (root: any, args: any, ctx: any): Promise<any> => {
     console.log("======GET ALL ROOMS=====");
     try {
         //Get all public room
@@ -19,4 +19,4 @@ const get_all_rooms = async (root: any, args: any, ctx: any): Promise<any> => {
         throw e;
     }
 }
-export { get_all_rooms }
+export { chat_get_all_rooms }

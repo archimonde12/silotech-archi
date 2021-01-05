@@ -1,13 +1,13 @@
 import { genSaltSync, hash, hashSync, compareSync } from "bcrypt";
-import { decode } from "jsonwebtoken";
+import { Client } from "grpc";
 import md5 from "md5";
 import { ClientSession, ObjectID } from "mongodb";
 import { secretCombinePairKey } from "./config";
-import { RoomInMongo } from "./models/Room";
-import { UserInMongo } from "./models/User";
+import { VerifyToken } from "./grpc/account-service-client";
+import { User } from "./models/User";
 import { collectionNames, db } from "./mongo";
 
-export const createInboxRoomKey = async (slug1: string, slug2: string) => {
+export const createInboxRoomKey = (slug1: string, slug2: string): string => {
   if (slug1 > slug2) {
     let combine = [slug1, secretCombinePairKey, slug2];
     let combineString = JSON.stringify(combine);
@@ -24,66 +24,59 @@ export const createInboxRoomKey = async (slug1: string, slug2: string) => {
 
 export const checkRoomIdInMongoInMutation = async (
   objectRoomId: ObjectID,
-  session: ClientSession
-): Promise<RoomInMongo> => {
-  const RoomData = await db
-    .collection(collectionNames.rooms)
-    .findOne({ _id: objectRoomId }, { session });
-  console.log({ RoomData });
-  if (!RoomData) {
-    await session.abortTransaction();
-    session.endSession();
-    throw new Error("RoomId not exist");
-  }
-  const result: RoomInMongo = RoomData;
-  return result;
-};
-
-export const testBcrypt = () => {
-  console.log("Test bcrypt");
-  const saltRounds = 10;
-  const myPlaintextPassword = "s0//P4$$w0rD";
-  const someOtherPlaintextPassword = "not_bacon";
-  const salt = genSaltSync(saltRounds);
-  console.log({ salt });
-  const hash = hashSync(myPlaintextPassword, salt);
-  console.log({ hash });
-  console.log({ resultTrue: compareSync(myPlaintextPassword, hash) });
-  console.log({ resultFalse: compareSync(someOtherPlaintextPassword, hash) });
-};
-
-export const getSlugFromToken = (token: string): string | null => {
-  //decode token
-  let decoded = decode(token);
-  if (!decoded) return null;
-  //Check token slug in Mongo
-  //Check token slug in AccountService
-  return "Success";
-};
-
-export const checkSlugsExistInDatabase = async (
-  slugs: String[],
   session?: ClientSession
-): Promise<Boolean> => {
-  //Check in mongo
-  let findUsersRes: UserInMongo[];
-  if (session) {
-    findUsersRes = await db
-      .collection(collectionNames.users)
-      .find({ slug: { $in: slugs } }, { session })
-      .toArray();
-  } else {
-    findUsersRes = await db
-      .collection(collectionNames.users)
-      .find({ slug: { $in: slugs } })
-      .toArray();
+) => {
+  try {
+    if (session) {
+      let RoomData = await db
+        .collection(collectionNames.rooms)
+        .findOne({ _id: objectRoomId }, { session });
+      console.log({ RoomData });
+      if (!RoomData) {
+        await session.abortTransaction();
+        session.endSession();
+        throw new Error("RoomId not exist");
+      }
+      return RoomData;
+    }
+    let RoomData = await db
+      .collection(collectionNames.rooms)
+      .findOne({ _id: objectRoomId });
+    console.log({ RoomData });
+    return RoomData;
+  } catch (e) {
+    throw e;
   }
-  const slugsFindInMongo = findUsersRes.map((user) => user.slug);
-  const slugsLeft = slugs.filter((slug) => !slugsFindInMongo.includes(slug));
-  if (findUsersRes.length !== slugs.length) {
-    //Check in Account Service Server}
-    //If slugs exist in Account Service Server => save Data to Mongo
-    throw new Error("Have slug not exist in database");
+};
+
+export const checkUsersInDatabase = async (
+  slugs: string[],
+  session?: ClientSession
+): Promise<string[]> => {
+  try {
+    if (slugs === []) return [];
+    //Check slugs in mongo
+    const usersInMongo: User[] = session
+      ? await db
+          .collection(collectionNames.users)
+          .find({ slug: { $in: slugs } }, { session })
+          .toArray()
+      : await db
+          .collection(collectionNames.users)
+          .find({ slug: { $in: slugs } })
+          .toArray();
+    console.log(usersInMongo);
+    const slugsInMongo = usersInMongo.map((user) => user.slug);
+    console.log({ slugsInMongo });
+    return slugsInMongo;
+  } catch (e) {
+    throw e;
   }
-  return true;
+};
+
+export const getSlugByToken = async (token: String): Promise<string> => {
+  if (!token || !token.trim()) throw new Error("token must be provided!");
+  const tokenVerifyRes = await VerifyToken(token);
+  if (!tokenVerifyRes) throw new Error("token invalid!");
+  return tokenVerifyRes.result;
 };

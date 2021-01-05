@@ -1,12 +1,14 @@
 import { ObjectId } from "mongodb";
 import { collectionNames, db } from "../../../mongo";
 
-const get_all_members = async (root: any, args: any, ctx: any): Promise<any> => {
+const chat_get_all_members = async (root: any, args: any, ctx: any): Promise<any> => {
     console.log("======GET ALL MEMBERS=====");
     //Get arguments
     console.log({ args });
     const { roomId } = args;
     const objectRoomId = new ObjectId(roomId);
+    //Check arguments
+    if(!roomId) throw new Error("all arguments must be provided")
     try {
         //Check roomId exist
         const RoomData = await db
@@ -29,4 +31,4 @@ const get_all_members = async (root: any, args: any, ctx: any): Promise<any> => 
         throw e;
     }
 }
-export { get_all_members }
+export { chat_get_all_members }

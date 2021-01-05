@@ -20,6 +20,12 @@ export const typeDefs = gql`
     shareContact
   }
 
+  enum SendToType{
+    global
+    publicRoom
+    inbox
+  }
+
   union Result = Room | Message | Member
   union MessageData = PlainTextMessData | BetMessData | ShareContactData
   union SubMessage = Message | DeleteNoti | SystemMessage
@@ -28,6 +34,11 @@ export const typeDefs = gql`
     title: String
     betId: String
     content: String
+  }
+
+  input SentTo{
+    roomType:SendToType!
+    reciver:String
   }
 
   type User {
@@ -49,8 +60,6 @@ export const typeDefs = gql`
     roomKey:String!
     pair:[User]!
     lastMess:Message
-    blockRequest:[User]
-    friendStatus:Boolean
   }
 
   type Member {
@@ -100,78 +109,75 @@ export const typeDefs = gql`
   }
 
   type Query {
+    # Search users
+    chat_search_users(text:String,limit:Int):[User]
     # Message
-    get_messages_in_room(sender: String, reciver: String!, limit: Int, skip:Int): [Message]
+    chat_get_messages_in_room( room: SentTo!, limit: Int, skip:Int): [Message]
     # Room
-    get_room_details(roomId: ObjectID!): Room
-    get_all_rooms: [Room]
-    get_inbox_rooms(slug: String!, limit: Int, skip:Int):[InboxRoom]
+    chat_get_room_details(roomId: ObjectID!): Room
+    chat_get_all_rooms: [Room]
+    chat_get_inbox_rooms( limit: Int, skip:Int):[InboxRoom]
     # Member
-    get_all_members(roomId: ObjectID!): [Member]
+    chat_get_all_members(roomId: ObjectID!): [Member]
     # Friend
-    get_all_friends(slug:String!):[User]
+    chat_get_all_friends(limit:Int,skip:Int):[User]
+    chat_get_all_friend_requests(token:String!,limit:Int,skip:Int):[User]
   }
 
   type Mutation {
     # Room
-    room_create(
-      slug: String!
+    chat_room_create(
       title: String!
       startMemberSlugs: [String]!
       roomType: RoomType!
     ): ResultMessage!
-    room_delete(createrSlug: String!, roomId: ObjectID!): ResultMessage!
-    room_join(newMemberSlug: String!, roomId: ObjectID!): ResultMessage!
-    room_leave(memberSlug: String!, roomId: ObjectID!): ResultMessage!
-    room_add(
-      admin: String!
+    chat_room_delete( roomId: ObjectID!): ResultMessage!
+    chat_room_join( roomId: ObjectID!): ResultMessage!
+    chat_room_leave( roomId: ObjectID!): ResultMessage!
+    chat_room_add(
       roomId: ObjectID!
       addMemberSlugs: [String]!
     ): ResultMessage!
-    room_remove(
-      admin: String!
+    chat_room_remove(
       roomId: ObjectID!
       removeMemberSlugs: [String!]
     ): ResultMessage!
-    room_block(
-      admin: String!
+    chat_room_block(
       roomId: ObjectID!
       blockMembersSlugs: [String!]
     ): ResultMessage!
-    room_remove_block(
-      admin:String!
+    chat_room_remove_block(
+    
       roomId:ObjectID!
       blockMemberSlug:String!
     ): ResultMessage!
-    room_set_role(
-      master:String!
+    chat_room_set_role(
       roomId:ObjectID!
       memberSlug:String!
-      roleSet:MemberRole
+      roleSet:MemberRole!
     ):Member
     # Message
-    message_send(
-      sender: String!
-      reciver: String!
-      type: MessageType
-      data: MessData
+    chat_message_send(
+      sendTo: SentTo!
+      type: MessageType!
+      data: MessData!
     ): ResultMessage!
 
-    message_delete(
-      admin: String!
+    chat_message_delete(
       roomId: ObjectID!
       messageId: ObjectID!
     ): ResultMessage!
 
     # Friend
-    friend_send_request(senderSlug:String!,reciverSlug:String!):ResultMessage!
-    friend_accept_request(reciverSlug:String!,senderSlug:String!):ResultMessage!
-    friend_reject_request(reciverSlug:String!,senderSlug:String!):ResultMessage!
-    friend_block(reciverSlug:String!,senderSlug:String!):ResultMessage!
-    friend_block_remove(reciverSlug:String!,senderSlug:String!):ResultMessage!
+    chat_friend_send_request(reciverSlug:String!):ResultMessage!
+    chat_friend_accept_request(senderSlug:String!):ResultMessage!
+    chat_friend_reject_request(senderSlug:String!):ResultMessage!
+    chat_friend_block(senderSlug:String!):ResultMessage!
+    chat_friend_block_remove(senderSlug:String!):ResultMessage!
   }
 
   type Subscription {
-    room_listen(roomKey: String!): SubMessage
+    room_listen(roomType:RoomType!,roomKey: String!): SubMessage
+    inbox_room_listen(reciverSlug:String!):SubMessage
   }
 `;

@@ -1,34 +1,44 @@
 import { ObjectId } from "mongodb";
-import { ADMIN_KEY } from "../../../config";
 import { MemberRole } from "../../../models/Member";
 import { client, collectionNames, db } from "../../../mongo";
-import { checkRoomIdInMongoInMutation } from "../../../ulti";
+import { checkRoomIdInMongoInMutation, getSlugByToken } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
-const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
+const chat_room_block = async (
+  root: any,
+  args: any,
+  ctx: any
+): Promise<any> => {
   console.log("======ROOM BLOCK=====");
 
   //Get arguments
   console.log({ args });
-  const { admin, roomId, blockMembersSlugs } = args;
+  const token = ctx.req.headers.authorization;
+  const { roomId, blockMembersSlugs } = args;
   const objectRoomId = new ObjectId(roomId);
   const totalMemberBlock = blockMembersSlugs.length;
 
   //Check arguments
-  if (!admin.trim()) throw new Error("admin must be provided")
-  if (blockMembersSlugs.length===0) throw new Error("blockMembersSlugs must be provided")
-  if (blockMembersSlugs.includes(admin)) throw new Error("Cannot block yourself");
+  if (!token || !roomId || !blockMembersSlugs)
+    throw new Error("all arguments must be provided");
+  if (!roomId.trim()) throw new Error("roomId must be provided");
+  //Verify token
+  const admin = await getSlugByToken(token);
+  if (blockMembersSlugs.length === 0)
+    throw new Error("blockMembersSlugs must be provided");
+  if (blockMembersSlugs.includes(admin))
+    throw new Error("Cannot block yourself");
 
   //Start transcation
   const session = client.startSession();
   session.startTransaction();
   try {
-
     //Check roomId exist
-    let RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session)
+    const RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session);
 
     //Check master in blockMembers
-    if (blockMembersSlugs.includes(RoomData.createdBy.slug)) throw new Error("Cannot block the master")
+    if (blockMembersSlugs.includes(RoomData.createdBy.slug))
+      throw new Error("Cannot block the master");
 
     //Check room type
     if (RoomData.type === `global`) {
@@ -38,10 +48,15 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
     }
 
     //Check member
-    const checkOldMembersArray = [...blockMembersSlugs, admin]
-    let checkOldMemFilter = { $and: [{ roomId: objectRoomId }, { slug: { $in: checkOldMembersArray } }] }
-    let checkOldMembers = await db.collection(collectionNames.members).find(checkOldMemFilter, { session }).toArray()
-    console.log({ checkOldMembers })
+    const checkOldMembersArray = [...blockMembersSlugs, admin];
+    const checkOldMemFilter = {
+      $and: [{ roomId: objectRoomId }, { slug: { $in: checkOldMembersArray } }],
+    };
+    const checkOldMembers = await db
+      .collection(collectionNames.members)
+      .find(checkOldMemFilter, { session })
+      .toArray();
+    console.log({ checkOldMembers });
     if (checkOldMembers.length !== checkOldMembersArray.length) {
       await session.abortTransaction();
       session.endSession();
@@ -49,30 +64,40 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
     }
 
     //Check admin role
-    let blockMemberData = checkOldMembers.filter(member => member.slug !== admin)
-    console.log({ blockMemberData })
-    let adminData = checkOldMembers.filter(member => member.slug === admin)[0]
-    console.log({ adminData })
-    let isAdminInBlockMembers: boolean = !blockMemberData.every(member => member.role === MemberRole.member.name)
-    console.log({ isAdminInBlockMembers })
+    const blockMemberData = checkOldMembers.filter(
+      (member) => member.slug !== admin
+    );
+    console.log({ blockMemberData });
+    const adminData = checkOldMembers.filter(
+      (member) => member.slug === admin
+    )[0];
+    console.log({ adminData });
+    const isAdminInBlockMembers: boolean = !blockMemberData.every(
+      (member) => member.role === MemberRole.member.name
+    );
+    console.log({ isAdminInBlockMembers });
     if (isAdminInBlockMembers && adminData.role !== MemberRole.master.name) {
       await session.abortTransaction();
       session.endSession();
-      throw new Error("Someone in block list is admin, you must be a master to block him")
+      throw new Error(
+        "Someone in block list is admin, you must be a master to block him"
+      );
     }
     if (adminData.role === MemberRole.member.name) {
       await session.abortTransaction();
       session.endSession();
-      throw new Error(`${admin} is not admin.`)
+      throw new Error(`${admin} is not admin.`);
     }
 
     //Remove member doc
-    let deleteQuery = { $and: [{ roomId: objectRoomId }, { slug: { $in: blockMembersSlugs } }] }
-    let { deletedCount } = await db
+    const deleteQuery = {
+      $and: [{ roomId: objectRoomId }, { slug: { $in: blockMembersSlugs } }],
+    };
+    const { deletedCount } = await db
       .collection(collectionNames.members)
       .deleteMany(deleteQuery, { session });
     console.log({ deletedCount });
-    
+
     //Update room doc
     if (!deletedCount) {
       throw new Error("fail to delete");
@@ -89,7 +114,7 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
       slug,
       roomId: objectRoomId,
     }));
-    let insertRes = await db
+    const insertRes = await db
       .collection(collectionNames.blockMembers)
       .insertMany(insertBlockMemberDocs, { session });
     console.log(`${insertRes.insertedCount} docs has been added!`);
@@ -97,8 +122,8 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
     session.endSession();
     const listenData = {
       roomKey: roomId.toString(),
-      content: `${blockMembersSlugs} has been block to join room`
-    }
+      content: `${blockMembersSlugs} has been block to join room`,
+    };
     pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
     return {
       success: true,
@@ -113,4 +138,4 @@ const room_block = async (root: any, args: any, ctx: any): Promise<any> => {
     throw e;
   }
 };
-export { room_block };
+export { chat_room_block };
