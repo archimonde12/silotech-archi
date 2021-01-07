@@ -1,10 +1,14 @@
 import { ClientSession, ObjectId } from "mongodb";
 import { GLOBAL_KEY } from "../../../config";
-import { InboxRoom } from "../../../models/InboxRoom";
+import { MemberInMongo } from "../../../models/Member";
 import { Message, MessageInMongo } from "../../../models/Message";
-import { client, collectionNames, db } from "../../../mongo";
+import { ResultMessage } from "../../../models/ResultMessage";
+import { InboxRoom, RoomInMongo } from "../../../models/Room";
+import { client, collectionNames, db, transactionOptions } from "../../../mongo";
 import {
   checkRoomIdInMongoInMutation,
+  checkUsersInDatabase,
+  createCheckFriendQuery,
   createInboxRoomKey,
   getSlugByToken,
 } from "../../../ulti";
@@ -19,60 +23,57 @@ const chat_message_send = async (
   //Get arguments
   const token = ctx.req.headers.authorization;
   const { sendTo, type, data } = args;
-  const { roomType, reciver } = sendTo;
-  if (!token || !roomType || !type || !data)
-    throw new Error("all arguments must be provided");
+  const { roomType, receiver } = sendTo;
   //Check arguments
-  if (!token.trim()) {
-    throw new Error("token must be provided");
-  }
-  //Verify token and get slug
-  const sender = await getSlugByToken(token);
+  if (!roomType || !type || !data)
+    throw new Error("all arguments must be provided");
+
   //Start transcation
   const session = client.startSession();
-  session.startTransaction();
-  let result: any;
   try {
-    switch (roomType) {
-      case "global":
-        result = await sendMessToGlobal(sender, type, data, session);
-        if (!result) {
-          await session.abortTransaction();
-          session.endSession();
-          throw new Error(`send message to user fail!`);
-        }
-        return result;
-      case "publicRoom":
-        result = await sendMessToPublicRoom(
-          sender,
-          reciver,
-          type,
-          data,
-          session
-        );
-        if (!result) {
-          await session.abortTransaction();
-          session.endSession();
-          throw new Error(`send message to publicRoom fail!`);
-        }
-        return result;
-      case "inbox":
-        result = await sendMessToUser(sender, reciver, type, data, session);
-        if (!result) {
-          await session.abortTransaction();
-          session.endSession();
-          throw new Error(`send message to user fail!`);
-        }
-        return result;
-      default:
-        throw new Error("reciverType must be provided");
+    //Verify token and get slug
+    const sender = await getSlugByToken(token);
+    let finalResult: ResultMessage = {
+      success: false,
+      message: '',
+      data: null
     }
+    const transactionResults: any = await session.withTransaction(async () => {
+      switch (roomType) {
+        case "global":
+          finalResult = await sendMessToGlobal(sender, type, data, session);
+          return;
+        case "publicRoom":
+          finalResult = await sendMessToPublicRoom(
+            sender,
+            receiver,
+            type,
+            data,
+            session
+          );
+          return;
+        case "inbox":
+          finalResult = await sendMessToUser(sender, receiver, type, data, session);
+          return;
+        default:
+          finalResult.message = "receiverType must be provided"
+          return
+      }
+    }, transactionOptions)
+    if (!transactionResults) {
+      console.log("The transaction was intentionally aborted.");
+    } else {
+      console.log("The transaction was successfully commit.");
+    }
+    session.endSession()
+    return finalResult
   } catch (e) {
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-      session.endSession();
+    console.log("The transaction was aborted due to an unexpected error: " + e);
+    return {
+      success: false,
+      message: `Unexpected Error: ${e}`,
+      data
     }
-    throw e;
   }
 };
 const sendMessToGlobal = async (
@@ -86,23 +87,21 @@ const sendMessToGlobal = async (
     const now = new Date();
     const insertNewMessageDoc: Message = {
       sentAt: now,
-      roomKey: GLOBAL_KEY,
+      roomId: GLOBAL_KEY,
       type,
       data,
       createdBy: {
         slug: sender,
       },
     };
-    const { insertedId } = await db
+    const { insertedId,insertedCount } = await db
       .collection(collectionNames.messages)
       .insertOne(insertNewMessageDoc, { session });
-    console.log({ insertedId });
+    console.log(`${insertedCount} document was inserted to the messages collection. docId='${insertedId}'`);
     const dataResult: MessageInMongo = {
       ...insertNewMessageDoc,
       _id: insertedId,
     };
-    await session.commitTransaction();
-    session.endSession();
     pubsub.publish(LISTEN_CHANEL, { room_listen: insertNewMessageDoc });
     return {
       success: true,
@@ -110,45 +109,61 @@ const sendMessToGlobal = async (
       data: dataResult,
     };
   } catch (e) {
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-      session.endSession();
+    await session.abortTransaction();
+    return {
+      success: false,
+      message: `Unexpected err: ${e}`,
+      data: null,
     }
-    throw e;
   }
 };
 const sendMessToPublicRoom = async (
   sender: string,
-  reciver: string,
+  receiver: string,
   type: string,
   data: any,
   session: ClientSession
 ) => {
   try {
     //Public Room  Message
-    console.log({ reciver });
-    if (ObjectId.isValid(reciver) && reciver && reciver.trim()) {
-      const objectRoomId = new ObjectId(reciver);
+    //console.log({ receiver });
+    if (ObjectId.isValid(receiver) && receiver && receiver.trim()) {
+      const objectRoomId = new ObjectId(receiver);
       //Check roomId exist
-      await checkRoomIdInMongoInMutation(objectRoomId, session);
+      const roomData: RoomInMongo | null = await checkRoomIdInMongoInMutation(objectRoomId, session);
+      if (!roomData) {
+        console.log("0 room was found in rooms collection");
+        await session.abortTransaction()
+        return {
+          success: false,
+          message: `roomId of publicRoom not exist`,
+          data: null
+        }
+      }
+      console.log(`1 room (title='${roomData.title}',master='${roomData.createdBy.slug}') was found in rooms collection`);
       //Check member
-      const memberData = await db
+      const memberData: MemberInMongo | null = await db
         .collection(collectionNames.members)
         .findOne(
           { $and: [{ roomId: objectRoomId }, { slug: sender }] },
           { session }
         );
-      console.log({ memberData });
+      //console.log({ memberData });
       if (!memberData) {
+        console.log("0 member was found in members collection");
         await session.abortTransaction();
-        session.endSession();
-        throw new Error(`${sender} is not a member`);
+        return {
+          success: false,
+          message: `${sender} is not a member of this room`,
+          data: null
+        }
       }
+      console.log(`1 member document (slug='${memberData.slug}') was found in members collection`)
       //Add new message doc
       const now = new Date();
       const insertNewMessageDoc: Message = {
         sentAt: now,
-        roomKey: reciver,
+        roomId: receiver,
         type,
         data,
         createdBy: {
@@ -158,23 +173,20 @@ const sendMessToPublicRoom = async (
       const { insertedId } = await db
         .collection(collectionNames.messages)
         .insertOne(insertNewMessageDoc, { session });
-      console.log({ insertedId });
+      console.log(`1 new message document was inserted in messages collection`);
       const dataResult: MessageInMongo = {
         ...insertNewMessageDoc,
-        _id: insertedId,
+        _id: insertedId
       };
       //Update room doc
-      if (insertedId) {
-        await db
-          .collection(collectionNames.rooms)
-          .updateOne(
-            { _id: objectRoomId },
-            { $set: { updatedAt: now, lastMess: data } },
-            { session }
-          );
-      }
-      await session.commitTransaction();
-      session.endSession();
+      await db
+        .collection(collectionNames.rooms)
+        .updateOne(
+          { _id: objectRoomId },
+          { $set: { updatedAt: now, lastMess: dataResult } },
+          { session }
+        );
+      console.log(`1 document was updated in rooms collection relate to new message updated`);
       pubsub.publish(LISTEN_CHANEL, { room_listen: insertNewMessageDoc });
       return {
         success: true,
@@ -183,66 +195,79 @@ const sendMessToPublicRoom = async (
       };
     }
     await session.abortTransaction();
-    session.endSession();
-    throw new Error("roomID invalid");
-  } catch (e) {
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-      session.endSession();
+    return {
+      success: false,
+      message: `roomId invalid`,
+      data: null,
     }
-    throw e;
+  } catch (e) {
+    await session.abortTransaction();
+    return {
+      success: false,
+      message: `Unexpected err: ${e}`,
+      data: null,
+    }
   }
 };
 const sendMessToUser = async (
   sender: string,
-  reciver: string,
+  receiver: string,
   type: string,
   data: any,
   session: ClientSession
 ) => {
   try {
-    if (!reciver || !reciver.trim()) {
+    console.log({ receiver })
+    if (!receiver || !receiver.trim()) {
+      console.log(`arguments invalid`)
       await session.abortTransaction();
-      session.endSession();
-      throw new Error("reciver username must be provided");
+      return {
+        success: false,
+        message: `receiver username must be provided`,
+        data: null
+      }
     }
     //Inbox Message
-    const roomKey = await createInboxRoomKey(sender, reciver);
-    const checkSlugs = [sender, reciver];
+    const roomKey = createInboxRoomKey(sender, receiver);
 
-    //Check sender and reciver exist in database
-    const findUsersRes = await db
-      .collection(collectionNames.users)
-      .find({ slug: { $in: checkSlugs } })
-      .toArray();
-    if (findUsersRes.length !== 2) {
+    //Check receiver exist in database
+    let slugsInDatabase = await checkUsersInDatabase([receiver], session)
+    if (slugsInDatabase.length !== 1) {
       await session.abortTransaction();
-      session.endSession();
-      throw new Error("someone not exist in database!");
+      return {
+        success: false,
+        message: `${receiver} is not exist in database!`,
+        data: null
+      }
     }
     //Check friend
-    const checkFriendQuery = {
-      slug1: sender > reciver ? sender : reciver,
-      slug2: sender <= reciver ? sender : reciver,
-    };
+    const checkFriendQuery = createCheckFriendQuery(sender, receiver)
     const checkFriend = await db
       .collection(collectionNames.friends)
       .findOne(checkFriendQuery, { session });
     if (!checkFriend || !checkFriend.isFriend) {
+      console.log(`0 document was found in friends collection`)
       await session.abortTransaction();
-      session.endSession();
-      throw new Error("must be friend before start a conversation!");
+      return {
+        success: false,
+        message: `${sender} and ${receiver} must be friend before start a conversation!`,
+        data: null
+      }
     }
+    console.log(`1 document was found in friends collection`)
     if (checkFriend.isBlock) {
       await session.abortTransaction();
-      session.endSession();
-      throw new Error("This conversation has been blocked");
+      return {
+        success: false,
+        message: `This conversation has been blocked`,
+        data: null
+      }
     }
     //Add new message doc
     const now = new Date();
     const insertNewMessageDoc: Message = {
       sentAt: now,
-      roomKey,
+      roomId: roomKey,
       type,
       data,
       createdBy: {
@@ -252,8 +277,7 @@ const sendMessToUser = async (
     const { insertedId } = await db
       .collection(collectionNames.messages)
       .insertOne(insertNewMessageDoc, { session });
-    console.log({ insertedId });
-    pubsub.publish(LISTEN_CHANEL, { room_listen: insertNewMessageDoc });
+    console.log(`1 new message document was inserted in messages collection`);
     const dataResult: MessageInMongo = {
       ...insertNewMessageDoc,
       _id: insertedId,
@@ -261,34 +285,36 @@ const sendMessToUser = async (
 
     //Create new inbox room if this is the first message
     const inboxRoomUpdateRes = await db
-      .collection(collectionNames.inboxRooms)
-      .updateOne({ roomKey }, { $set: { lastMess: dataResult } }, { session });
-    console.log({ modifiedCount: inboxRoomUpdateRes.modifiedCount });
+      .collection(collectionNames.rooms)
+      .updateOne({ _id: roomKey }, { $set: { lastMess: dataResult } }, { session });
+    console.log(`${inboxRoomUpdateRes.modifiedCount} document was updated in rooms collection relate to new message updated`);
     if (inboxRoomUpdateRes.modifiedCount === 0) {
       const insertNewInboxRoomDoc: InboxRoom = {
-        roomKey,
-        pair: [{ slug: sender }, { slug: reciver }],
+        _id: roomKey,
+        pair: [{ slug: sender }, { slug: receiver }],
+        type: 'inbox',
+        createdAt: now,
+        updatedAt: now,
         lastMess: dataResult,
       };
       await db
-        .collection(collectionNames.inboxRooms)
+        .collection(collectionNames.rooms)
         .insertOne(insertNewInboxRoomDoc, { session });
+      console.log(`1 new inboxRoom document was inserted in rooms collection`);
     }
-    await session.commitTransaction();
-    session.endSession();
     pubsub.publish(LISTEN_CHANEL, { inbox_room_listen: insertNewMessageDoc });
-
     return {
       success: true,
       message: `send message success!`,
       data: dataResult,
     };
   } catch (e) {
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-      session.endSession();
+    await session.abortTransaction();
+    return {
+      success: false,
+      message: `Unexpected err: ${e}`,
+      data: null,
     }
-    throw e;
   }
 };
 export { chat_message_send };

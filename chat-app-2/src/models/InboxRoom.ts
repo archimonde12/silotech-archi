@@ -9,8 +9,7 @@ type InboxRoom = {
 }
 
 type InboxRoomInMongo = {
-    _id: ObjectID
-    roomKey: string
+    _id: string
     pair: User[]
     lastMess: Message | null
 }
@@ -21,7 +20,5 @@ const InboxRoomIndexes: IndexSpecification[] = [
 ]
 
 export {
-    InboxRoom,
-    InboxRoomInMongo,
-    InboxRoomIndexes
+  
 }

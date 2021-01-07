@@ -6,8 +6,8 @@ const chat_get_all_friend_requests = async (root: any, args: any, ctx: any) => {
     //Get arguments
     console.log({ args });
     const token = ctx.req.headers.authorization
-    const { limit=10, skip=0 } = args;
-    if (!token||!token.trim()) throw new Error("token must be provided")
+    const { limit = 10, skip = 0 } = args;
+    if (!token || !token.trim()) throw new Error("token must be provided")
     try {
         //Verify token and get slug
         const slug = await getSlugByToken(token)

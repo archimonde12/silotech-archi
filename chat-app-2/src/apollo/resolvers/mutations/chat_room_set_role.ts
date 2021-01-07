@@ -80,11 +80,12 @@ const chat_room_set_role = async (
     pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
     return { ...memberData, role: roleToSet };
   } catch (e) {
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-      session.endSession();
+    console.log("The transaction was aborted due to an unexpected error: " + e);
+    return {
+      success: false,
+      message: `Unexpected Error: ${e}`,
+      data: null
     }
-    throw e;
   }
 };
 

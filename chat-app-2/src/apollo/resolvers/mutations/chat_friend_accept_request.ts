@@ -1,71 +1,77 @@
-import { collectionNames, db, client } from "../../../mongo";
-import { getSlugByToken } from "../../../ulti";
+import { ResultMessage } from "../../../models/ResultMessage";
+import { collectionNames, db, client, transactionOptions } from "../../../mongo";
+import { createCheckFriendQuery, getSlugByToken } from "../../../ulti";
 
-const chat_friend_accept_request = async (
-  root: any,
+const chat_friend_accept_request = async (root: any,
   args: any,
   ctx: any
 ): Promise<any> => {
+  console.log("======FRIEND ACCEPT REQUEST=====")
+  //Get arguments
+  const token = ctx.req.headers.authorization;
+  console.log({ args });
+  const { senderSlug } = args;
+  //Check arguments
+  if (!senderSlug || !senderSlug.trim())
+    throw new Error("senderSlug must be provided");
   //Start transaction
   const session = client.startSession();
-  session.startTransaction();
   try {
-    console.log("======FRIEND ACCEPT REQUEST=====");
-    //Get arguments
-    const token = ctx.req.headers.authorization;
-    console.log({ args });
-    const { senderSlug } = args;
-    //Check arguments
-    if (!token || !senderSlug || !senderSlug.trim())
-      throw new Error("all arguments must be provided");
     //Verify token and get slug
-    const reciverSlug = await getSlugByToken(token);
-    //Check friend relationship exist and request has been sent
-    const checkFriendQuery = {
-      slug1: senderSlug > reciverSlug ? senderSlug : reciverSlug,
-      slug2: senderSlug <= reciverSlug ? senderSlug : reciverSlug,
-    };
-    const checkFriend = await db
-      .collection(collectionNames.friends)
-      .findOne(checkFriendQuery, { session });
-    console.log({ checkFriend });
-    //Check friendRelationship exist| isFriend | isBlock | friendRestFrom
-    if (
-      !checkFriend ||
-      checkFriend.isFriend ||
-      checkFriend.isBlock ||
-      checkFriend._friendRequestFrom !== senderSlug
-    ) {
-      await session.abortTransaction();
-      session.endSession();
-      throw new Error("Accept fail!");
+    const receiverSlug = await getSlugByToken(token);
+    let finalResult: ResultMessage = {
+      success: false,
+      message: '',
+      data: null
     }
-    //Update friend docments
-    const now = new Date();
-    const updateDoc = {
-      $set: { _friendRequestFrom: null, isFriend: true, beFriendAt: now },
-    };
-    const { modifiedCount } = await db
-      .collection(collectionNames.friends)
-      .updateOne(checkFriendQuery, updateDoc, { session });
-    if (modifiedCount !== 1) {
-      await session.abortTransaction();
-      session.endSession();
-      throw new Error("update accept request fail!");
+    const transactionResults: any = await session.withTransaction(async () => {
+      //Check friend relationship exist and request has been sent
+      const checkFriendQuery = createCheckFriendQuery(senderSlug,receiverSlug)
+      // console.log({ checkFriendQuery })
+      const checkFriendRelationShip = await db
+        .collection(collectionNames.friends)
+        .findOne(checkFriendQuery, { session });
+      // console.log({ checkFriendRelationShip });
+      //Check friendRelationship exist| isFriend | isBlock | friendRestFrom
+      if (
+        !checkFriendRelationShip ||
+        checkFriendRelationShip.isFriend ||
+        checkFriendRelationShip.isBlock ||
+        checkFriendRelationShip._friendRequestFrom !== senderSlug
+      ) {
+        await session.abortTransaction();
+        finalResult.message = 'Accept fail! Reason: Already friend | Block | Already receive friend request | Friend Request not exist'
+        return
+      }
+      console.log(`1 document was found in the friends collection`)
+      //Update friend docments
+      const now = new Date();
+      const updateDoc = {
+        $set: { _friendRequestFrom: null, isFriend: true, beFriendAt: now },
+      };
+      const { modifiedCount } = await db
+        .collection(collectionNames.friends)
+        .updateOne(checkFriendQuery, updateDoc, { session });
+      console.log(`${modifiedCount} document(s) was/were updated in the friends collection`)
+      finalResult.success = true
+      finalResult.message = `${receiverSlug} and ${senderSlug} become friends`
+    }, transactionOptions)
+    if (!transactionResults) {
+      console.log("The transaction was intentionally aborted.");
+    } else {
+      console.log("The transaction was successfully commit.");
     }
-    await session.commitTransaction();
-    await session.endSession();
-    return {
-      success: true,
-      message: `${reciverSlug} and ${senderSlug} become friends`,
-      data: null,
-    };
+    session.endSession()
+    return finalResult
   } catch (e) {
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-      session.endSession();
+    console.log("The transaction was aborted due to an unexpected error: " + e);
+    return {
+      success: false,
+      message: `Unexpected Error: ${e}`,
+      data:null
     }
-    throw e;
   }
-};
+
+}
+
 export { chat_friend_accept_request };

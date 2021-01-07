@@ -8,14 +8,25 @@ const RoomTypes = {
     global: 'global'
 }
 
+type RoomType="public"|"global"
+
 type Room = {
     title: string
     createdBy: User
-    type: string
+    type: RoomType
     createdAt: Date
     updatedAt: Date
     totalMembers: number
     lastMess: Message|null
+}
+
+type InboxRoom = {
+    _id: string
+    pair: User[]
+    type: 'inbox'
+    createdAt: Date
+    updatedAt: Date
+    lastMess: Message | null
 }
 
 type RoomInMongo = {
@@ -30,14 +41,14 @@ type RoomInMongo = {
 }
 
 const RoomIndexes: IndexSpecification[] = [
-    { key: { title: 1, createdBy: 1, createdAt: 1 },unique:true},
+    { key: { _id:1, createdAt: 1 },unique:true},
 ]
 
 export {
     Room,
     RoomInMongo,
     RoomIndexes,
-    RoomTypes
-
+    RoomTypes,
+    InboxRoom
 }
 

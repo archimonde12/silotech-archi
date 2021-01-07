@@ -1,4 +1,5 @@
-import { InboxRoomInMongo } from "../../../models/InboxRoom";
+
+import { InboxRoom } from "../../../models/Room";
 import { collectionNames, db } from "../../../mongo";
 import { getSlugByToken } from "../../../ulti";
 
@@ -14,15 +15,8 @@ const chat_get_inbox_rooms = async (root: any, args: any, ctx: any): Promise<any
     }
     //Verify token and get slug
     const slug = await getSlugByToken(token)
-    //Check slug exist in database
-    const findUsersRes = await db
-        .collection(collectionNames.users)
-        .findOne({ slug })
-    if (!findUsersRes) {
-        throw new Error(`${slug} not exist in database`)
-    }
     //Query all inboxroom that slug is a member
-    const inboxRoomsData: InboxRoomInMongo[] = await db.collection(collectionNames.inboxRooms).find({ pair: { $all: [{ slug }] } }).limit(limit).skip(skip).toArray()
+    const inboxRoomsData: InboxRoom[] = await db.collection(collectionNames.rooms).find({ pair: { $all: [{ slug }] } }).sort({"lastMess.sentAt":-1}).limit(limit).skip(skip).toArray()
     console.log({ inboxRoomsData })
     return inboxRoomsData
 }

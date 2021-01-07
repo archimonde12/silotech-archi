@@ -52,5 +52,17 @@ export const resolvers = {
 
       return null;
     },
+  },
+  MixRoom:{
+    __resolveType(obj, context, info) {
+      if (obj.type) {
+        return "Room";
+      }
+
+      if (obj.pair) {
+        return "InboxRoom";
+      }
+      return null;
+    },
   }
 };

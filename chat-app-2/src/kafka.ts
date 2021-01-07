@@ -1,6 +1,7 @@
 import { Kafka } from "kafkajs";
 import { kafkaBroker, kafkaClientId } from "./config";
 import { collectionNames, db } from "./mongo";
+import { setAsync } from "./redis";
 import { checkUsersInDatabase } from "./ulti";
 
 const brickKafka = new Kafka({
@@ -30,14 +31,21 @@ const connectBrickConsumer = async () => {
                     const value = message?.value?.toString()
                     if (!value) throw new Error("cannot get value")
                     const newUser = JSON.parse(value).data
+                    //Check in mongo
                     let userInMongo = await checkUsersInDatabase([newUser.slug])
                     console.log({userInMongo})
                     if (userInMongo.length===1) { 
                         console.log(`user ${newUser.slug} already created`);
                         return; 
                     }
-                    await db.collection(collectionNames.users).insertOne(newUser);
-                    console.log(`New user has been created ${newUser.slug}`);
+                    //Create new one in mongo if not exist
+                    const {insertedCount,insertedId}=await db.collection(collectionNames.users).insertOne(newUser);
+                    console.log(`${insertedCount} new user document was inserted in the users collection with _id='${insertedId}'`);
+                    //Save to redis
+                    const key=`chat-api.users.${newUser.slug}`
+                    const redisSetRes=await setAsync(key,JSON.stringify(newUser))
+                    if(!redisSetRes) console.log("Fail to saving in Redis")
+                    console.log(`New userv value has been created ${newUser.slug} in Redis with key='${key}'`);
                     return;
                 } catch (e) {
                     throw e

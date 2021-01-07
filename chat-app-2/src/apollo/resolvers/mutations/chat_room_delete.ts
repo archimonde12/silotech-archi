@@ -54,11 +54,12 @@ const chat_room_delete = async (
     await session.endSession();
     return { success: true, message: `delete this room success!`, data: null };
   } catch (e) {
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-      session.endSession();
+    console.log("The transaction was aborted due to an unexpected error: " + e);
+    return {
+      success: false,
+      message: `Unexpected Error: ${e}`,
+      data: null
     }
-    throw e;
   }
 };
 export { chat_room_delete };

@@ -1,12 +1,14 @@
 import { initApollo } from "./apollo";
 import { connectBrickConsumer } from "./kafka";
 import { connectMongoDb } from "./mongo";
+import { initRedis } from "./redis";
 
 const start = async () => {
   try {
     await connectMongoDb();
     await initApollo();
-    //await connectBrickConsumer()
+    await initRedis()
+    await connectBrickConsumer()
   } catch (e) {
     throw e;
   }

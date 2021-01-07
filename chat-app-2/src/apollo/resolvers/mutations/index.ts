@@ -14,6 +14,7 @@ import { chat_friend_block } from "./chat_friend_block";
 import { chat_friend_reject_request } from "./chat_friend_reject_request";
 import { chat_friend_send_request } from "./chat_friend_send_request";
 import { chat_friend_block_remove } from "./chat_friend_block_remove";
+import {test_with_transaction} from "./test_with_transaction"
 
 const Mutation = {
   //room
@@ -35,5 +36,7 @@ const Mutation = {
   chat_friend_reject_request,
   chat_friend_block,
   chat_friend_block_remove,
+  //testWithTransactions
+  test_with_transaction
 };
 export { Mutation };

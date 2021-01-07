@@ -13,7 +13,7 @@ const MessageTypes = {
 }
 
 type Message = {
-  roomKey: string;
+  roomId: string;
   sentAt: Date;
   type: string,
   data: object,
@@ -21,16 +21,17 @@ type Message = {
 };
 
 type MessageInMongo = {
-  _id: ObjectID;
-  roomKey: string;
+  _id:ObjectID
+  roomId: string;
   sentAt: Date;
   type: string,
   data: object,
   createdBy: User;
 };
 
+
 const MessageIndexes: IndexSpecification[] = [
   { key: { roomId: 1, createdBy: 1,sentAt:1 },unique:true},
 ];
 
-export { Message, MessageInMongo, MessageIndexes, MessageTypes };
+export { Message,MessageInMongo, MessageIndexes, MessageTypes };

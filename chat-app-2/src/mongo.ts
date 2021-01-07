@@ -1,4 +1,4 @@
-import { connect, Db, MongoClient } from "mongodb";
+import { connect, Db, MongoClient, TransactionOptions } from "mongodb";
 import { mongoUri } from "./config";
 import { MessageIndexes } from "./models/Message";
 import { RoomIndexes } from "./models/Room";
@@ -6,8 +6,7 @@ import { MemberIndexes } from "./models/Member";
 import { UserInMongoIndexes } from "./models/User";
 import { createFakeUserToMongo } from "./initMongo/user";
 import { BlockMemberIndexes } from "./models/BlockMember";
-import { InboxRoomIndexes } from "./models/InboxRoom";
-import {FriendIndexes} from "./models/Friend"
+import { FriendIndexes } from "./models/Friend"
 
 let client: MongoClient;
 let db: Db;
@@ -21,8 +20,13 @@ const collectionNames = {
   members: "members",
   memberRoles: "memberRoles",
   blockMembers: "blockMembers",
-  inboxRooms:"inboxRooms",
-  friends:"friends"
+  friends: "friends"
+};
+
+const transactionOptions: TransactionOptions = {
+  readPreference: 'primary',
+  readConcern: { level: 'local' },
+  writeConcern: { w: 'majority' }
 };
 
 const connectMongoDb = async () => {
@@ -32,6 +36,7 @@ const connectMongoDb = async () => {
       useNewUrlParser: true,
       ignoreUndefined: true,
     });
+
 
     client.on("error", async (e) => {
       try {
@@ -64,13 +69,10 @@ const connectMongoDb = async () => {
     db = client.db();
     await Promise.all([
       db.collection(collectionNames.members).createIndexes(MemberIndexes),
-      db
-        .collection(collectionNames.blockMembers)
-        .createIndexes(BlockMemberIndexes),
+      db.collection(collectionNames.blockMembers).createIndexes(BlockMemberIndexes),
       db.collection(collectionNames.messages).createIndexes(MessageIndexes),
       db.collection(collectionNames.users).createIndexes(UserInMongoIndexes),
       db.collection(collectionNames.rooms).createIndexes(RoomIndexes),
-      db.collection(collectionNames.inboxRooms).createIndexes(InboxRoomIndexes),
       db.collection(collectionNames.friends).createIndexes(FriendIndexes)
     ]);
     console.log(`Mongodb: connected`);
@@ -86,4 +88,4 @@ const initMongodb = async () => {
   await createFakeUserToMongo();
 };
 
-export { client, db, connectMongoDb, initMongodb, collectionNames };
+export { client, db, connectMongoDb, initMongodb, collectionNames, transactionOptions };

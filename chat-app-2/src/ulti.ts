@@ -1,4 +1,6 @@
+import { logAndExitProcess } from "@sentry/node/dist/handlers";
 import { genSaltSync, hash, hashSync, compareSync } from "bcrypt";
+import { extendSchemaImpl } from "graphql/utilities/extendSchema";
 import { Client } from "grpc";
 import md5 from "md5";
 import { ClientSession, ObjectID } from "mongodb";
@@ -6,6 +8,7 @@ import { secretCombinePairKey } from "./config";
 import { VerifyToken } from "./grpc/account-service-client";
 import { User } from "./models/User";
 import { collectionNames, db } from "./mongo";
+import { existsAsync } from "./redis";
 
 export const createInboxRoomKey = (slug1: string, slug2: string): string => {
   if (slug1 > slug2) {
@@ -31,12 +34,6 @@ export const checkRoomIdInMongoInMutation = async (
       let RoomData = await db
         .collection(collectionNames.rooms)
         .findOne({ _id: objectRoomId }, { session });
-      console.log({ RoomData });
-      if (!RoomData) {
-        await session.abortTransaction();
-        session.endSession();
-        throw new Error("RoomId not exist");
-      }
       return RoomData;
     }
     let RoomData = await db
@@ -54,20 +51,28 @@ export const checkUsersInDatabase = async (
   session?: ClientSession
 ): Promise<string[]> => {
   try {
+    console.log(`Check user = ${slugs}`)
+    const totalNumberUserCheck = slugs.length
     if (slugs === []) return [];
+    //Check slugs in redis
+    const keys = slugs.map(slug => `chat-api.users.${slug}`)
+    const checkKeysExistInRedis = await existsAsync(keys)
+    console.log(`${checkKeysExistInRedis}/${totalNumberUserCheck} user(s) was/were found in Redis.`)
+    if (checkKeysExistInRedis === totalNumberUserCheck) {
+      return slugs
+    }
     //Check slugs in mongo
     const usersInMongo: User[] = session
       ? await db
-          .collection(collectionNames.users)
-          .find({ slug: { $in: slugs } }, { session })
-          .toArray()
+        .collection(collectionNames.users)
+        .find({ slug: { $in: slugs } }, { session })
+        .toArray()
       : await db
-          .collection(collectionNames.users)
-          .find({ slug: { $in: slugs } })
-          .toArray();
-    console.log(usersInMongo);
+        .collection(collectionNames.users)
+        .find({ slug: { $in: slugs } })
+        .toArray();
     const slugsInMongo = usersInMongo.map((user) => user.slug);
-    console.log({ slugsInMongo });
+    console.log(`${slugsInMongo.length}/${totalNumberUserCheck} user(s) was/were found in Mongo.`);
     return slugsInMongo;
   } catch (e) {
     throw e;
@@ -75,8 +80,18 @@ export const checkUsersInDatabase = async (
 };
 
 export const getSlugByToken = async (token: String): Promise<string> => {
-  if (!token || !token.trim()) throw new Error("token must be provided!");
-  const tokenVerifyRes = await VerifyToken(token);
-  if (!tokenVerifyRes) throw new Error("token invalid!");
-  return tokenVerifyRes.result;
+  try {
+    if (!token || !token.trim()) throw new Error("token must be provided!");
+    const tokenVerifyRes = await VerifyToken(token);
+    if (!tokenVerifyRes) throw new Error("token invalid!");
+    return tokenVerifyRes.result;
+  } catch(e){
+    throw e
+  }
+  
 };
+
+export const createCheckFriendQuery = (senderSlug: string, reciverSlug: string) => ({
+  slug1: senderSlug > reciverSlug ? senderSlug : reciverSlug,
+  slug2: senderSlug <= reciverSlug ? senderSlug : reciverSlug,
+});

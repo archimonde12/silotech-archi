@@ -29,6 +29,7 @@ export const typeDefs = gql`
   union Result = Room | Message | Member
   union MessageData = PlainTextMessData | BetMessData | ShareContactData
   union SubMessage = Message | DeleteNoti | SystemMessage
+  union MixRoom=Room|InboxRoom
 
   input MessData {
     title: String
@@ -38,7 +39,7 @@ export const typeDefs = gql`
 
   input SentTo{
     roomType:SendToType!
-    reciver:String
+    receiver:String
   }
 
   type User {
@@ -53,7 +54,7 @@ export const typeDefs = gql`
     totalMembers: Int
     createdAt: Date
     updatedAt: Date
-    lastMess: MessageData
+    lastMess: Message
   }
 
   type InboxRoom{
@@ -110,18 +111,19 @@ export const typeDefs = gql`
 
   type Query {
     # Search users
-    chat_search_users(text:String,limit:Int):[User]
+    chat_search_users(text:String,limit:Int,skip:Int):[User]
     # Message
     chat_get_messages_in_room( room: SentTo!, limit: Int, skip:Int): [Message]
     # Room
     chat_get_room_details(roomId: ObjectID!): Room
-    chat_get_all_rooms: [Room]
+    chat_get_all_rooms(limit:Int,skip:Int): [Room]
     chat_get_inbox_rooms( limit: Int, skip:Int):[InboxRoom]
+    chat_get_mix_rooms(limit:Int,skip:Int):[MixRoom]
     # Member
-    chat_get_all_members(roomId: ObjectID!): [Member]
+    chat_get_all_members(roomId: ObjectID!,limit:Int,skip:Int): [Member]
     # Friend
     chat_get_all_friends(limit:Int,skip:Int):[User]
-    chat_get_all_friend_requests(token:String!,limit:Int,skip:Int):[User]
+    chat_get_all_friend_requests(limit:Int,skip:Int):[User]
   }
 
   type Mutation {
@@ -169,15 +171,18 @@ export const typeDefs = gql`
     ): ResultMessage!
 
     # Friend
-    chat_friend_send_request(reciverSlug:String!):ResultMessage!
+    chat_friend_send_request(receiverSlug:String!):ResultMessage!
     chat_friend_accept_request(senderSlug:String!):ResultMessage!
     chat_friend_reject_request(senderSlug:String!):ResultMessage!
     chat_friend_block(senderSlug:String!):ResultMessage!
     chat_friend_block_remove(senderSlug:String!):ResultMessage!
+
+    #testWithTransactions
+    test_with_transaction:ResultMessage
   }
 
   type Subscription {
     room_listen(roomType:RoomType!,roomKey: String!): SubMessage
-    inbox_room_listen(reciverSlug:String!):SubMessage
+    inbox_room_listen(receiverSlug:String!):SubMessage
   }
 `;

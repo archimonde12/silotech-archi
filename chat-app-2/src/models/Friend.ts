@@ -8,7 +8,7 @@ type Friend = {
     isFriend: boolean
     isBlock: boolean
     _friendRequestFrom: String|null
-    _blockRequest: String[]
+    _blockRequest: String|null
 }
 
 type FriendInMongo = {
@@ -19,7 +19,7 @@ type FriendInMongo = {
     isFriend: boolean
     isBlock: boolean
     _friendRequestFrom: String|null
-    _blockRequest: String[]
+    _blockRequest: String|null
 }
 
 const FriendIndexes: IndexSpecification[] = [

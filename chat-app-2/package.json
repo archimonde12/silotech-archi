@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node dist/index.js",
+    "build": "rm -rf dist && tsc && cp src/grpc/account-service.proto dist/grpc",
     "dev": "ts-node ./src/index.ts",
     "client": "ts-node ./src/grpc/account-service-client.ts",
     "dev:watch": "nodemon --watch 'src/**/*.ts' --exec ts-node src/index.ts",
