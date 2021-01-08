@@ -1,4 +1,3 @@
-import { log } from "util";
 import { Friend, FriendInMongo } from "../../../models/Friend";
 import { ResultMessage } from "../../../models/ResultMessage";
 import { collectionNames, db, client, transactionOptions } from "../../../mongo";
@@ -81,7 +80,7 @@ const chat_friend_block = async (root: any,
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");
     } else {
-      console.log("The transaction was successfully commit.");
+      console.log("The transaction was successfully committed.");
     }
     session.endSession()
     return finalResult

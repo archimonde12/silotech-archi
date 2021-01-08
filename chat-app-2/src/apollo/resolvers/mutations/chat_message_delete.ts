@@ -1,5 +1,8 @@
-import { ObjectId } from "mongodb";
-import { client, collectionNames, db } from "../../../mongo";
+import { DeleteWriteOpResultObject, ObjectId } from "mongodb";
+import { MessageInMongo } from "../../../models/Message";
+import { ResultMessage } from "../../../models/ResultMessage";
+import { RoomInMongo } from "../../../models/Room";
+import { client, collectionNames, db, transactionOptions } from "../../../mongo";
 import { checkRoomIdInMongoInMutation, getSlugByToken } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
@@ -18,53 +21,83 @@ const chat_message_delete = async (
     throw new Error("all arguments must be provided");
   const objectRoomId = new ObjectId(roomId);
   const objectMessageId = new ObjectId(messageId);
-  //Verify token and get slug
-  const master = await getSlugByToken(token);
+
   //Start transaction
   const session = client.startSession();
-  session.startTransaction();
+
   try {
-    //Check roomId exist
-    const RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session);
-    //Check master
-    if (master !== RoomData.createdBy.slug) {
-      await session.abortTransaction();
-      session.endSession();
-      throw new Error(`${master} is not a master of this room`);
+    //Verify token and get slug
+    const master = await getSlugByToken(token);
+    let finalResult: ResultMessage = {
+      success: false,
+      message: '',
+      data: null
     }
-    //Check message
-    const MessageData = await db
-      .collection(collectionNames.messages)
-      .findOne({ _id: objectMessageId }, { session });
-    console.log({ MessageData });
-    if (!MessageData) {
-      await session.abortTransaction();
-      session.endSession();
-      throw new Error(`MessageId not exist`);
+    const transactionResults: any = await session.withTransaction(async () => {
+      //Check roomId exist
+      const RoomData: RoomInMongo | null = await checkRoomIdInMongoInMutation(objectRoomId, session);
+      if (!RoomData) {
+        console.log('0 document was found in the rooms collection')
+        await session.abortTransaction();
+        finalResult.message = `Cannot find a room with roomId=${roomId}`
+        return
+      }
+      console.log('1 document was found in the room collection')
+      //Check master
+      if (master !== RoomData.createdBy.slug) {
+        await session.abortTransaction();
+        finalResult.message = `${master} is not a master of this room`
+        return
+      }
+      //Check message
+      const MessageData: MessageInMongo | null = await db
+        .collection(collectionNames.messages)
+        .findOne({ _id: objectMessageId }, { session });
+      // console.log({ MessageData });
+      if (!MessageData) {
+        console.log('0 document was found in the messages collection')
+        await session.abortTransaction();
+        finalResult.message = `MessageId not exist`
+        return
+      }
+      console.log('1 document was found in the messages collection')
+      //Delete message
+      const deleteMessageRes: DeleteWriteOpResultObject = await db
+        .collection(collectionNames.messages)
+        .deleteOne({ _id: objectMessageId }, { session });
+      // console.log(deleteMessageRes);
+      console.log(`${deleteMessageRes.deletedCount} document was deleted in the messages collection`)
+      if (deleteMessageRes.deletedCount === 0) {
+        await session.abortTransaction();
+        finalResult.message = `Deleted message fail`
+        return
+      }
+      const listenData = {
+        roomId,
+        deleteMessageId: MessageData._id,
+        content: `${MessageData._id} message has been delete!`,
+      };
+      pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
+      finalResult = {
+        success: true,
+        message: `Delete message success!`,
+        data: null
+      };
+    }, transactionOptions)
+    if (!transactionResults) {
+      console.log("The transaction was intentionally aborted.");
+    } else {
+      console.log("The transaction was successfully committed.");
     }
-    //Delete message
-    const deleteMessageRes = await db
-      .collection(collectionNames.messages)
-      .deleteOne({ _id: objectMessageId }, { session });
-    console.log(deleteMessageRes);
-    await session.commitTransaction();
-    session.endSession();
-    const listenData = {
-      roomId,
-      deleteMessageId: MessageData._id,
-      content: `${MessageData._id} message has been delete!`,
-    };
-    pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
-    return {
-      success: true,
-      message: `delete message success!`,
-    };
+    session.endSession()
+    return finalResult
   } catch (e) {
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-      session.endSession();
+    console.log("The transaction was aborted due to an unexpected error: " + e);
+    return {
+      success: false,
+      message: `Unexpected Error: ${e}`,
+      data: null
     }
-    throw e;
   }
 };
 export { chat_message_delete };

@@ -11,10 +11,10 @@ const Subscription = {
     subscribe: withFilter(
       () => pubsub.asyncIterator([LISTEN_CHANEL]),
       (payload, variables) => {
-        const { roomType, roomKey } = variables
-        if (roomType === "global") return payload.room_listen.roomKey === GLOBAL_KEY
+        const { roomType, roomId } = variables
+        if (roomType === "global") return payload.room_listen.roomId === GLOBAL_KEY
         return (
-          payload.room_listen.roomKey === roomKey
+          payload.room_listen.roomId === roomId
         );
       }
     ),

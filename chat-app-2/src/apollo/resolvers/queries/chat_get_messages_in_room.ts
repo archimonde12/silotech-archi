@@ -55,7 +55,7 @@ const getMessInPublicRoom = async (reciver: string, limit: number, skip: number)
     //Query Message
     const allMessage = await db
       .collection(collectionNames.messages)
-      .find({ roomKey: reciver })
+      .find({ roomId: reciver })
       .limit(limit)
       .skip(skip)
       .sort({ sentAt: -1 })
@@ -83,7 +83,7 @@ const getMessInInboxRoom = async (sender: string, reciver: string, limit: number
   //Query Message
   const allMessage = await db
     .collection(collectionNames.messages)
-    .find({ roomKey })
+    .find({ roomId:roomKey })
     .limit(limit)
     .skip(skip)
     .sort({ sentAt: -1 })
@@ -95,7 +95,7 @@ const getMessInGlobal = async (limit: number, skip: number) => {
   //Query Message
   const allMessage = await db
     .collection(collectionNames.messages)
-    .find({ roomKey: GLOBAL_KEY })
+    .find({ roomId: GLOBAL_KEY })
     .limit(limit)
     .skip(skip)
     .sort({ sentAt: -1 })

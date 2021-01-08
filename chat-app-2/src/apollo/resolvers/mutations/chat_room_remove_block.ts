@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { MemberRole } from "../../../models/Member";
 import { ResultMessage } from "../../../models/ResultMessage";
+import { RoomInMongo } from "../../../models/Room";
 import {
   client,
   collectionNames,
@@ -29,7 +30,6 @@ const chat_room_remove_block = async (
   }
   //Start transcation
   const session = client.startSession();
-  session.startTransaction();
   try {
     //Verify token and get slug
     const admin = await getSlugByToken(token);
@@ -39,25 +39,31 @@ const chat_room_remove_block = async (
       data: null,
     };
     if (blockMemberSlug.trim() === admin.trim()) {
-      await session.abortTransaction();
       throw new Error("cannot remove block yourself");
     }
 
     const transactionResults: any = await session.withTransaction(async () => {
       //Check roomId exist
-      const RoomData = await checkRoomIdInMongoInMutation(
-        objectRoomId,
-        session
-      );
+      const RoomData:RoomInMongo|null = await checkRoomIdInMongoInMutation(objectRoomId, session);
+      if(!RoomData){
+        console.log('0 document was found in the rooms collection')
+        await session.abortTransaction(); 
+        finalResult.message=`Cannot find a room with roomId=${roomId}`
+        return
+      }
+      console.log('1 document was found in the rooms collection')
       //Check admin role
       const adminData = await db
         .collection(collectionNames.members)
         .findOne({ $and: [{ slug: admin }, { roomId: objectRoomId }] });
+       
       if (!adminData) {
+        console.log('0 member document was found in the members collection')
         await session.abortTransaction();
         finalResult.message = `${admin} is not a member of this room`;
         return;
       }
+      console.log('1 member document was found in the members collection')
       if (adminData.role === MemberRole.member.name) {
         await session.abortTransaction();
         finalResult.message = `${admin} is not a admin of this room`;
@@ -70,6 +76,7 @@ const chat_room_remove_block = async (
         .deleteOne({
           $and: [{ slug: blockMemberSlug }, { roomId: objectRoomId }],
         });
+        console.log(`${blockMemberDeleteRes.deletedCount} document was deleted in the blockMembers collection`)
       if (blockMemberDeleteRes.deletedCount === 0) {
         await session.abortTransaction();
         finalResult.message = `${blockMemberSlug} is not exist in block list`;
@@ -84,7 +91,7 @@ const chat_room_remove_block = async (
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");
     } else {
-      console.log("The reservation was successfully created.");
+      console.log("The transaction was successfully committed.");
     }
     session.endSession();
     return finalResult;

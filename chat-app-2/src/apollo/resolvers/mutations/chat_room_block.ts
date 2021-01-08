@@ -2,6 +2,7 @@ import { decorateWithLogger } from "apollo-server";
 import { ObjectId } from "mongodb";
 import { MemberRole } from "../../../models/Member";
 import { ResultMessage } from "../../../models/ResultMessage";
+import { RoomInMongo } from "../../../models/Room";
 import { client, collectionNames, db, transactionOptions } from "../../../mongo";
 import { checkRoomIdInMongoInMutation, checkUsersInDatabase, getSlugByToken } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
@@ -16,12 +17,12 @@ const chat_room_block = async (
   //Get arguments
   console.log({ args });
   const token = ctx.req.headers.authorization;
-  const { roomId, blockMembersSlugs } = args;
+  const { roomId, blockMemberSlugs } = args;
   const objectRoomId = new ObjectId(roomId);
-  const totalMemberBlock = blockMembersSlugs.length;
+  const totalMemberBlock = blockMemberSlugs.length;
 
   //Check arguments
-  if (!token || !roomId || !blockMembersSlugs)
+  if (!token || !roomId || !blockMemberSlugs)
     throw new Error("all arguments must be provided");
   if (!roomId.trim()) throw new Error("roomId must be provided");
 
@@ -30,9 +31,9 @@ const chat_room_block = async (
   try {
     //Verify token
     const admin = await getSlugByToken(token);
-    if (blockMembersSlugs.length === 0)
-      throw new Error("blockMembersSlugs must be provided");
-    if (blockMembersSlugs.includes(admin))
+    if (blockMemberSlugs.length === 0)
+      throw new Error("blockMemberSlugs must be provided");
+    if (blockMemberSlugs.includes(admin))
       throw new Error("Cannot block yourself");
     let finalResult: ResultMessage = {
       success: false,
@@ -41,10 +42,16 @@ const chat_room_block = async (
     }
     const transactionResults: any = await session.withTransaction(async () => {
       //Check roomId exist
-      const RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session);
-
+      const RoomData:RoomInMongo|null = await checkRoomIdInMongoInMutation(objectRoomId, session);
+      if(!RoomData){
+        console.log('0 document was found in the room collection')
+        await session.abortTransaction(); 
+        finalResult.message=`Cannot find a room with roomId=${roomId}`
+        return
+      }
+      console.log('1 document was found in the room collection')
       //Check master in blockMembers
-      if (blockMembersSlugs.includes(RoomData.createdBy.slug)) {
+      if (blockMemberSlugs.includes(RoomData.createdBy.slug)) {
         await session.abortTransaction();
         finalResult.message = "Cannot block the master";
         return;
@@ -56,14 +63,14 @@ const chat_room_block = async (
         return;
       }
       //Check blockMembers exist
-      let slugsInDatabase = await checkUsersInDatabase([blockMembersSlugs], session)
-      if (slugsInDatabase.length !== blockMembersSlugs.length) {
+      let slugsInDatabase = await checkUsersInDatabase(blockMemberSlugs, session)
+      if (slugsInDatabase.length !== blockMemberSlugs.length) {
         await session.abortTransaction();
-        finalResult.message = `${blockMembersSlugs.filter(slug => !slugsInDatabase.includes(slug))} is not exist in database!`
+        finalResult.message = `${blockMemberSlugs.filter(slug => !slugsInDatabase.includes(slug))} is not exist in database!`
         return
       }
       //Check member
-      const checkOldMembersArray = [...blockMembersSlugs, admin];
+      const checkOldMembersArray = [...blockMemberSlugs, admin];
       const checkOldMemFilter = {
         $and: [{ roomId: objectRoomId }, { slug: { $in: checkOldMembersArray } }],
       };
@@ -74,7 +81,7 @@ const chat_room_block = async (
       console.log(`${checkOldMembers.length} member document(s) was/were found in the members collection`);
       if (checkOldMembers.length !== checkOldMembersArray.length) {
         await session.abortTransaction();
-        finalResult.message = `admin or someone are not a member in this room`
+        finalResult.message = `Someone in blockMemberSlugs are not a member in this room`
         return
       }
 
@@ -104,7 +111,7 @@ const chat_room_block = async (
 
       //Remove member doc
       const deleteQuery = {
-        $and: [{ roomId: objectRoomId }, { slug: { $in: blockMembersSlugs } }],
+        $and: [{ roomId: objectRoomId }, { slug: { $in: blockMemberSlugs } }],
       };
       const { deletedCount } = await db
         .collection(collectionNames.members)
@@ -125,7 +132,7 @@ const chat_room_block = async (
         );
         console.log(`${updateRoomRes.modifiedCount} doc(s) was/were updated in the rooms collection`)
       //Add block member
-      const insertBlockMemberDocs = blockMembersSlugs.map((slug) => ({
+      const insertBlockMemberDocs = blockMemberSlugs.map((slug) => ({
         slug,
         roomId: objectRoomId,
       }));
@@ -135,17 +142,17 @@ const chat_room_block = async (
       console.log(`${insertRes.insertedCount} doc(s) was/were inserted to the blockMembers collection`);
      
       const listenData = {
-        roomKey: roomId.toString(),
-        content: `${blockMembersSlugs} has been block`,
+        roomId: roomId.toString(),
+        content: `${blockMemberSlugs} has been block`,
       };
       pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
       finalResult.success=true
       finalResult.message=`${totalMemberBlock} member(s) has been block!`
     }, transactionOptions)
     if (!transactionResults) {
-      console.log("The transaction was intentionally aƒborted.");
+      console.log("The transaction was intentionally aborted.");
     } else {
-      console.log("The reservation was successfully created.");
+      console.log("The transaction was successfully committed.");
     }
     session.endSession()
     return finalResult
@@ -153,7 +160,7 @@ const chat_room_block = async (
     console.log("The transaction was aborted due to an unexpected error: " + e);
     return {
       success: false,
-      message: `Unexpected Error: ${e}`,
+      message: `Unexpected ${e}`,
       data: null
     }
   }

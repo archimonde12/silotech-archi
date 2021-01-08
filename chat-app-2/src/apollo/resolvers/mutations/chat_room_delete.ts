@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { ADMIN_KEY } from "../../../config";
 import { ResultMessage } from "../../../models/ResultMessage";
+import { RoomInMongo } from "../../../models/Room";
 import {
   client,
   collectionNames,
@@ -35,10 +36,14 @@ const chat_room_delete = async (
     };
     const transactionResults: any = await session.withTransaction(async () => {
       //Check roomId exist
-      const RoomData = await checkRoomIdInMongoInMutation(
-        objectRoomId,
-        session
-      );
+      const RoomData: RoomInMongo | null = await checkRoomIdInMongoInMutation(objectRoomId, session);
+      if (!RoomData) {
+        console.log('0 document was found in the room collection')
+        await session.abortTransaction();
+        finalResult.message = `Cannot find a room with roomId=${roomId}`
+        return
+      }
+      console.log('1 document was found in the room collection')
       //Check room type
       if (RoomData.type === `global` && createrSlug !== ADMIN_KEY) {
         await session.abortTransaction();
@@ -51,25 +56,29 @@ const chat_room_delete = async (
         finalResult.message = `${createrSlug} is not a master of this room`;
         return;
       }
+      console.log(`${createrSlug} is the master of this room`)
       //Delete the room
-      await db
+      const deleteRoomRes = await db
         .collection(collectionNames.rooms)
         .deleteOne({ _id: objectRoomId }, { session });
+      console.log(`${deleteRoomRes.deletedCount} document was deleted in the rooms collection`)
       //Remove and user
-      await db
+      const deleteMembersRes = await db
         .collection(collectionNames.members)
         .deleteMany({ roomId: objectRoomId }, { session });
+      console.log(`${deleteMembersRes.deletedCount} document was deleted in the members collection`)
       //Delete all message
-      await db
-        .collection(collectionNames.messages)
-        .deleteMany({ roomId: objectRoomId }, { session });
+      const deleteMessagesRes = await db
+        .collection(collectionNames.messages) 
+        .deleteMany({ roomId }, { session });
+      console.log(`${deleteMessagesRes.deletedCount} document was deleted in the messages collection`)
       finalResult.success = true;
       finalResult.message = `delete this room success!`;
     }, transactionOptions);
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");
     } else {
-      console.log("The reservation was successfully created.");
+      console.log("The transaction was successfully committed.");
     }
     session.endSession();
     return finalResult;

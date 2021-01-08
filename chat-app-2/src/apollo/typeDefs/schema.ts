@@ -58,9 +58,11 @@ export const typeDefs = gql`
   }
 
   type InboxRoom{
-    roomKey:String!
+    _id:String!
     pair:[User]!
+    type:String
     lastMess:Message
+    updatedAt:Date
   }
 
   type Member {
@@ -68,7 +70,7 @@ export const typeDefs = gql`
     roomId: ObjectID
     joinedAt: Date
     role: String
-  }
+  } 
   
   type SystemMessage{
     roomKey:String
@@ -146,7 +148,7 @@ export const typeDefs = gql`
     ): ResultMessage!
     chat_room_block(
       roomId: ObjectID!
-      blockMembersSlugs: [String!]
+      blockMemberSlugs: [String!]
     ): ResultMessage!
     chat_room_remove_block(
     
@@ -157,7 +159,7 @@ export const typeDefs = gql`
       roomId:ObjectID!
       memberSlug:String!
       roleSet:MemberRole!
-    ):Member
+    ):ResultMessage!
     # Message
     chat_message_send(
       sendTo: SentTo!
@@ -182,7 +184,7 @@ export const typeDefs = gql`
   }
 
   type Subscription {
-    room_listen(roomType:RoomType!,roomKey: String!): SubMessage
+    room_listen(roomType:RoomType!,roomId: String!): SubMessage
     inbox_room_listen(receiverSlug:String!):SubMessage
   }
 `;

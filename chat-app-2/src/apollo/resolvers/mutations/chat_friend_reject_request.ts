@@ -70,7 +70,7 @@ const chat_friend_reject_request = async (
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");
     } else {
-      console.log("The transaction was successfully commit.");
+      console.log("The transaction was successfully committed.");
     }
     session.endSession()
     return finalResult

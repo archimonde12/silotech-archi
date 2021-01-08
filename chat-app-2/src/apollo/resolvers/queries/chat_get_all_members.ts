@@ -14,15 +14,18 @@ const chat_get_all_members = async (root: any, args: any, ctx: any): Promise<any
         const RoomData = await db
             .collection(collectionNames.rooms)
             .findOne({ _id: objectRoomId });
-        console.log({ RoomData });
+        // console.log({ RoomData });
         if (!RoomData) {
+            console.log('0 document was found in the room collection')
             throw new Error("RoomId not exist");
         }
+        console.log('1 document was found in the room collection')
         //Check member
         const membersData = await db
             .collection(collectionNames.members)
             .find({ roomId: objectRoomId }).toArray();
-        console.log({ membersData });
+        // console.log({ membersData });
+        console.log(`${membersData.length} document(s) was/were found in the room collection`)
         if(membersData.length===RoomData.totalMembers){
             return membersData
         }

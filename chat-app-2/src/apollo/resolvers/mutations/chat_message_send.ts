@@ -63,7 +63,7 @@ const chat_message_send = async (
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");
     } else {
-      console.log("The transaction was successfully commit.");
+      console.log("The transaction was successfully committed.");
     }
     session.endSession()
     return finalResult
@@ -136,7 +136,7 @@ const sendMessToPublicRoom = async (
         await session.abortTransaction()
         return {
           success: false,
-          message: `roomId of publicRoom not exist`,
+          message: `publicRoom not exist`,
           data: null
         }
       }

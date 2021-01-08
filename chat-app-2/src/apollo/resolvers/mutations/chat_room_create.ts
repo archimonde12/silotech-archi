@@ -81,10 +81,10 @@ const chat_room_create = async (
         lastMess: null,
       };
       // console.log({ insertRoomDoc });
-      const { insertedId } = await db
+      const { insertedId,insertedCount } = await db
         .collection(collectionNames.rooms)
         .insertOne(insertRoomDoc, { session });
-      console.log(insertedId);
+      console.log(`${insertedCount} new document was inserted to rooms collection with _id=`,insertedId);
 
       //Insert member docs
       const insertMemberDocs = startMemberSlugs.map((slug) => ({
@@ -99,10 +99,11 @@ const chat_room_create = async (
         joinedAt: now,
         role: MemberRole.master.name,
       });
-      console.log(insertMemberDocs);
-      await db
+      //console.log(insertMemberDocs);
+      const insertNewMemRes=await db
         .collection(collectionNames.members)
         .insertMany(insertMemberDocs, { session });
+        console.log(`${insertNewMemRes.insertedCount} new document(s) was/were inserted to members collection`);
       const dataResult: RoomInMongo = { ...insertRoomDoc, _id: insertedId };
       finalResult.success = true;
       finalResult.message = `create new room success!`;
@@ -111,7 +112,7 @@ const chat_room_create = async (
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");
     } else {
-      console.log("The reservation was successfully created.");
+      console.log("The transaction was successfully committed.");
     }
     session.endSession();
     return finalResult;

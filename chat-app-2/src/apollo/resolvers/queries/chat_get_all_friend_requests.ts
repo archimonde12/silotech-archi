@@ -14,6 +14,7 @@ const chat_get_all_friend_requests = async (root: any, args: any, ctx: any) => {
         //Query all friends of slug
         const query = { $and: [{ $or: [{ slug1: slug }, { slug2: slug }] }, { isFriend: false }, { _friendRequestFrom: { $nin: [slug, null] } }] }
         const getAllFriendRequestsRes = await db.collection(collectionNames.friends).find(query).limit(limit).skip(skip).toArray()
+        console.log(`${getAllFriendRequestsRes.length} document(s) was/were found in the friends collection`)
         const AllFriendRequests = getAllFriendRequestsRes.map(friendContract => friendContract.slug1 === slug ? { slug: friendContract.slug2 } : { slug: friendContract.slug1 })
         console.log({ AllFriendRequests })
         return AllFriendRequests

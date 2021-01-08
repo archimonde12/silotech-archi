@@ -8,7 +8,7 @@ const chat_get_all_rooms = async (root: any, args: any, ctx: any): Promise<any> 
     try {
         //Get all public room
         const allRooms = await db.collection(collectionNames.rooms).find({ $or: [{ type: RoomTypes.public }, { type: RoomTypes.global }] }).sort({"lastMess.sentAt":-1}).limit(limit).skip(skip).toArray()
-        console.log({ allRooms })
+        console.log(`${allRooms.length} document was found in the rooms collection`)
         // const sortFunc = (a, b) => {
         //     if(a.updatedAt < b.updatedAt) { return -1; }
         //     if(a.updatedAt > b.updatedAt) { return 1; }

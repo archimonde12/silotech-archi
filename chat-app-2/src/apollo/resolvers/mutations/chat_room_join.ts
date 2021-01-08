@@ -1,6 +1,9 @@
 import { ObjectId } from "mongodb";
+import { BlockMemberInMongo } from "../../../models/BlockMember";
 import { Member, MemberInMongo, MemberRole } from "../../../models/Member";
 import { ResultMessage } from "../../../models/ResultMessage";
+import { RoomInMongo } from "../../../models/Room";
+import { UserInMongo } from "../../../models/User";
 import {
   client,
   collectionNames,
@@ -34,33 +37,41 @@ const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
     };
     const transactionResults: any = await session.withTransaction(async () => {
       //Check roomId exist
-      const RoomData = await checkRoomIdInMongoInMutation(
-        objectRoomId,
-        session
-      );
+      const RoomData: RoomInMongo | null = await checkRoomIdInMongoInMutation(objectRoomId, session);
+      if (!RoomData) {
+        console.log('0 document was found in the room collection')
+        await session.abortTransaction();
+        finalResult.message = `Cannot find a room with roomId=${roomId}`
+        return
+      }
+      console.log('1 document was found in the room collection')
       //Check newMemberSlug exist
-      const checkSlug = await db
+      const checkSlug: UserInMongo | null = await db
         .collection(collectionNames.users)
         .findOne({ slug: newMemberSlug }, { session });
-      console.log({ checkSlug });
+      // console.log({ checkSlug });
       if (!checkSlug) {
+        console.log(`0 document was found in the users collection`)
         await session.abortTransaction();
         finalResult.message = `${newMemberSlug} not exist in user database`;
         return;
       }
+      console.log(`1 document was found in the users collection`)
       //Check block
-      const blockMemberData = await db
+      const blockMemberData: BlockMemberInMongo | null = await db
         .collection(collectionNames.blockMembers)
         .findOne(
           { $and: [{ roomId: objectRoomId }, { slug: newMemberSlug }] },
           { session }
         );
-      console.log({ blockMemberData });
+      // console.log({ blockMemberData });
       if (blockMemberData) {
+        console.log(`1 document was found in the blockMembers collection`)
         await session.abortTransaction();
         finalResult.message = `${newMemberSlug} has been blocked`;
         return;
       }
+      console.log(`0 document was found in the blockMembers collection`)
       //Check member
       const memberData = await db
         .collection(collectionNames.members)
@@ -68,13 +79,14 @@ const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
           { $and: [{ roomId: objectRoomId }, { slug: newMemberSlug }] },
           { session }
         );
-      console.log({ memberData });
+      // console.log({ memberData });
       if (memberData) {
+        console.log(`1 document was found in the members collection`)
         await session.abortTransaction();
         finalResult.message = `${newMemberSlug} already a member`;
         return;
       }
-
+      console.log(`0 document was found in the members collection`)
       //Add new Member Doc
       const now = new Date();
       const insertNewMemberDoc: Member = {
@@ -83,26 +95,26 @@ const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
         joinedAt: now,
         role: MemberRole.member.name,
       };
-      const { insertedId } = await db
+      const { insertedId, insertedCount } = await db
         .collection(collectionNames.members)
         .insertOne(insertNewMemberDoc, { session });
-      console.log({ insertedId });
+      console.log(`${insertedCount} member document was inserted to the members collection with _id=${insertedId}`);
       //Update Room Doc
-      if (insertedId) {
-        await db
-          .collection(collectionNames.rooms)
-          .updateOne(
-            { _id: objectRoomId },
-            { $inc: { totalMembers: 1 } },
-            { session }
-          );
-      }
+
+      const { modifiedCount } = await db
+        .collection(collectionNames.rooms)
+        .updateOne(
+          { _id: objectRoomId },
+          { $inc: { totalMembers: 1 } },
+          { session }
+        );
+      console.log(`${modifiedCount} document was updated in the room collection. Field change = totalMembers`)
       const dataResult: MemberInMongo = {
         ...insertNewMemberDoc,
         _id: insertedId,
       };
       const listenData = {
-        roomKey: roomId.toString(),
+        roomId: roomId.toString(),
         content: `${newMemberSlug} join this room`,
       };
       pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
@@ -115,7 +127,7 @@ const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");
     } else {
-      console.log("The reservation was successfully created.");
+      console.log("The transaction was successfully committed.");
     }
     session.endSession();
     return finalResult;

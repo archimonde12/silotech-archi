@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { MemberRole } from "../../../models/Member";
 import { ResultMessage } from "../../../models/ResultMessage";
+import { RoomInMongo } from "../../../models/Room";
 import {
   client,
   collectionNames,
@@ -42,16 +43,18 @@ const chat_room_remove = async (
       data: null,
     };
     if (removeMemberSlugs.includes(admin)) {
-      await session.abortTransaction();
       throw new Error("Cannot remove yourself");
     }
     const transactionResults: any = await session.withTransaction(async () => {
       //Check roomId exist
-      const RoomData = await checkRoomIdInMongoInMutation(
-        objectRoomId,
-        session
-      );
-
+      const RoomData: RoomInMongo | null = await checkRoomIdInMongoInMutation(objectRoomId, session);
+      if (!RoomData) {
+        console.log('0 document was found in the room collection')
+        await session.abortTransaction();
+        finalResult.message = `Cannot find a room with roomId=${roomId}`
+        return
+      }
+      console.log('1 document was found in the rooms collection')
       //Check master in removeMembers
       if (removeMemberSlugs.includes(RoomData.createdBy.slug)) {
         await session.abortTransaction();
@@ -78,10 +81,11 @@ const chat_room_remove = async (
         .collection(collectionNames.members)
         .find(checkOldMemFilter, { session })
         .toArray();
-      console.log({ checkOldMembers });
+      // console.log({ checkOldMembers });
+      console.log(`${checkOldMembers.length}/${checkOldMembersArray.length} document(s) was/were found in the members collection`)
       if (checkOldMembers.length !== checkOldMembersArray.length) {
         await session.abortTransaction();
-        finalResult.message = `admin or someone are not a member in this room`;
+        finalResult.message = `Someone are not a member in this room`;
         return;
       }
 
@@ -89,15 +93,15 @@ const chat_room_remove = async (
       const removeMemberData = checkOldMembers.filter(
         (member) => member.slug !== admin
       );
-      console.log({ removeMemberData });
+      // console.log({ removeMemberData });
       const adminData = checkOldMembers.filter(
         (member) => member.slug === admin
       )[0];
-      console.log({ adminData });
+      // console.log({ adminData });
       const isAdminInRemoveMember: boolean = !removeMemberData.every(
         (member) => member.role === MemberRole.member.name
       );
-      console.log({ isAdminInRemoveMember });
+      // console.log({ isAdminInRemoveMember });
       if (isAdminInRemoveMember && adminData.role !== MemberRole.master.name) {
         await session.abortTransaction();
         finalResult.message =
@@ -117,23 +121,23 @@ const chat_room_remove = async (
       const { deletedCount } = await db
         .collection(collectionNames.members)
         .deleteMany(deleteQuery, { session });
-      console.log({ deletedCount });
-
+      console.log(`${deletedCount} document(s) was/were deleted in members collection`)
       //Update room doc
-      if (!deletedCount) {
+      if (deletedCount===0||!deletedCount) {
         await session.abortTransaction();
         finalResult.message = "Fail to delete";
         return;
       }
-      await db
+      const { modifiedCount } = await db
         .collection(collectionNames.rooms)
         .updateOne(
           { _id: objectRoomId },
           { $inc: { totalMembers: -deletedCount } },
           { session }
         );
+      console.log(`${modifiedCount} document(s) was/were updated in rooms collection. Field change ="totalMembers"`)
       const listenData = {
-        roomKey: roomId.toString(),
+        roomId: roomId.toString(),
         content: `${removeMemberSlugs} has been kick out this room`,
       };
       pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
@@ -146,7 +150,7 @@ const chat_room_remove = async (
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");
     } else {
-      console.log("The reservation was successfully created.");
+      console.log("The transaction was successfully committed.");
     }
     session.endSession();
     return finalResult;

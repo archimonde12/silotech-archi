@@ -1,12 +1,13 @@
 import { connect, Db, MongoClient, TransactionOptions } from "mongodb";
-import { mongoUri } from "./config";
+import { GLOBAL_KEY, mongoUri } from "./config";
 import { MessageIndexes } from "./models/Message";
-import { RoomIndexes } from "./models/Room";
+import { GlobalRoomInMongo, RoomIndexes, RoomInMongo } from "./models/Room";
 import { MemberIndexes } from "./models/Member";
 import { UserInMongoIndexes } from "./models/User";
 import { createFakeUserToMongo } from "./initMongo/user";
 import { BlockMemberIndexes } from "./models/BlockMember";
 import { FriendIndexes } from "./models/Friend"
+import { InitGlobalRooms } from "./initMongo/globalRoom";
 
 let client: MongoClient;
 let db: Db;
@@ -85,7 +86,12 @@ const connectMongoDb = async () => {
 };
 
 const initMongodb = async () => {
-  await createFakeUserToMongo();
+  await InitGlobalRooms(GLOBAL_KEY)
+  await db.dropCollection("test")
+  await db.createCollection("test",{ capped : true, size:4000,  max : 5 } )
+  for(let i=1;i<10;i++){
+    await db.collection("test").insertOne({hoan:`hoan${i}`})
+  }
 };
 
-export { client, db, connectMongoDb, initMongodb, collectionNames, transactionOptions };
+export { client, db, connectMongoDb, initMongodb, collectionNames, transactionOptions }; 

@@ -1,6 +1,8 @@
 import { ObjectId } from "mongodb";
 import { MemberRole } from "../../../models/Member";
 import { ResultMessage } from "../../../models/ResultMessage";
+import { RoomInMongo } from "../../../models/Room";
+import { UserInMongo } from "../../../models/User";
 import {
   client,
   collectionNames,
@@ -37,20 +39,26 @@ const chat_room_leave = async (
     };
     const transactionResults: any = await session.withTransaction(async () => {
       //Check roomId exist
-      const RoomData = await checkRoomIdInMongoInMutation(
-        objectRoomId,
-        session
-      );
+      const RoomData: RoomInMongo | null = await checkRoomIdInMongoInMutation(objectRoomId, session);
+      if (!RoomData) {
+        console.log('0 document was found in the room collection')
+        await session.abortTransaction();
+        finalResult.message = `Cannot find a room with roomId=${roomId}`
+        return
+      }
+      console.log('1 document was found in the room collection')
       //Check newMemberSlug exist
-      const checkSlug = await db
+      const checkSlug: UserInMongo | null = await db
         .collection(collectionNames.users)
         .findOne({ slug: memberSlug }, { session });
-      console.log({ checkSlug });
+      // console.log({ checkSlug });
       if (!checkSlug) {
+        console.log(`0 document was found in the users collection`)
         await session.abortTransaction();
         finalResult.message = `${memberSlug} not exist in user database`;
         return;
       }
+      console.log(`1 document was found in the users collection`)
       //Check member
       const memberData = await db
         .collection(collectionNames.members)
@@ -58,12 +66,14 @@ const chat_room_leave = async (
           { $and: [{ roomId: objectRoomId }, { slug: memberSlug }] },
           { session }
         );
-      console.log({ memberData });
+      // console.log({ memberData });
       if (!memberData) {
+        console.log(`1 document was found in the members collection`)
         await session.abortTransaction();
         finalResult.message = `${memberSlug} is not a member`;
         return;
       }
+      console.log(`0 document was found in the members collection`)
       //Check master
       if (memberData.role === MemberRole.master.name) {
         await session.abortTransaction();
@@ -71,19 +81,21 @@ const chat_room_leave = async (
         return;
       }
       //Delete member document
-      await db
+      const { deletedCount } = await db
         .collection(collectionNames.members)
         .deleteOne({ _id: memberData._id }, { session });
+      console.log(`${deletedCount} document was deleted in the members collection`)
       //Update room document
-      await db
+      const { modifiedCount } = await db
         .collection(collectionNames.rooms)
         .updateOne(
           { _id: objectRoomId },
           { $inc: { totalMembers: -1 } },
           { session }
         );
+      console.log(`${modifiedCount} document was updated in the room collection. Field change = totalMembers`)
       const listenData = {
-        roomKey: roomId.toString(),
+        roomId: roomId.toString(),
         content: `${memberSlug} leave this room`,
       };
       pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
@@ -96,7 +108,7 @@ const chat_room_leave = async (
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");
     } else {
-      console.log("The reservation was successfully created.");
+      console.log("The transaction was successfully committed.");
     }
     session.endSession();
     return finalResult;

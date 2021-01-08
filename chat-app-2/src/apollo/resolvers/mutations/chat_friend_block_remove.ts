@@ -1,6 +1,5 @@
 import { ResultMessage } from "../../../models/ResultMessage";
 import { collectionNames, db, client, transactionOptions } from "../../../mongo";
-import { getAsync } from "../../../redis";
 import { checkUsersInDatabase, createCheckFriendQuery, getSlugByToken } from "../../../ulti";
 
 const chat_friend_block_remove = async (
@@ -62,7 +61,7 @@ const chat_friend_block_remove = async (
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");    
     } else {
-      console.log("The transaction was successfully commit.");
+      console.log("The transaction was successfully committed.");
     }
     session.endSession()
     return finalResult

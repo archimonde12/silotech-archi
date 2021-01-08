@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { Member, MemberRole } from "../../../models/Member";
 import { ResultMessage } from "../../../models/ResultMessage";
+import { RoomInMongo } from "../../../models/Room";
 import { client, collectionNames, db, transactionOptions } from "../../../mongo";
 import { checkRoomIdInMongoInMutation, checkUsersInDatabase, getSlugByToken } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
@@ -18,8 +19,6 @@ const chat_room_add = async (root: any, args: any, ctx: any): Promise<any> => {
   if (!token || !roomId || !addMemberSlugs)
     throw new Error("all arguments must be provided");
   if (!roomId.trim()) throw new Error("roomId must be provided");
-  if (addMemberSlugs.length === 0)
-    throw new Error("add Member must be provided");
 
   if (addMemberSlugs.length === 0)
     throw new Error("addMemberSlugs must be provided");
@@ -35,19 +34,25 @@ const chat_room_add = async (root: any, args: any, ctx: any): Promise<any> => {
       data: null
     }
     if (addMemberSlugs.includes(admin)) {
-      await session.abortTransaction();
       throw new Error("Cannot add yourself");
     }
     const transactionResults: any = await session.withTransaction(async () => {
       //Check roomId exist
-      const RoomData = await checkRoomIdInMongoInMutation(objectRoomId, session);
+      const RoomData:RoomInMongo|null = await checkRoomIdInMongoInMutation(objectRoomId, session);
+      if(!RoomData){
+        console.log('0 document was found in the room collection')
+        await session.abortTransaction(); 
+        finalResult.message=`Cannot find a room with roomId=${roomId}`
+        return
+      }
+      console.log('1 document was found in the room collection')
       //Check room type
       if (RoomData.type === `global`) {
         await session.abortTransaction();
         throw new Error("This is global room!you can do anything");
       }
       //Check addMemberSlugs exist
-      let slugsInDatabase = await checkUsersInDatabase([addMemberSlugs], session)
+      let slugsInDatabase = await checkUsersInDatabase(addMemberSlugs, session)
       if (slugsInDatabase.length !== addMemberSlugs.length) {
         await session.abortTransaction();
         finalResult.message = `${addMemberSlugs.filter(slug => !slugsInDatabase.includes(slug))} is not exist in database!`
@@ -89,7 +94,6 @@ const chat_room_add = async (root: any, args: any, ctx: any): Promise<any> => {
       console.log(`${checkBlockMembers.length} block member document(s) was/were found in the blockMembers collection`);
       if (checkBlockMembers.length > 0) {
         await session.abortTransaction();
-        session.endSession();
         finalResult.message = `Someone has been blocked`
         return
       }
@@ -124,11 +128,11 @@ const chat_room_add = async (root: any, args: any, ctx: any): Promise<any> => {
         );
       console.log(`${modifiedCount} document(s) was/were updated in rooms collection to include adding new member`)
       const listenData = {
-        roomKey: roomId.toString(),
+        roomId: roomId.toString(),
         content: `${addMemberSlugs} has been added`,
       };
       pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
-      return {
+      finalResult= {
         success: true,
         message: `add ${totalAddMember} new member(s) success!`,
         data: null,
@@ -137,7 +141,7 @@ const chat_room_add = async (root: any, args: any, ctx: any): Promise<any> => {
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");
     } else {
-      console.log("The reservation was successfully created.");
+      console.log("The transaction was successfully committed.");
     }
     session.endSession()
     return finalResult

@@ -40,6 +40,14 @@ type RoomInMongo = {
     lastMess: Message|null
 }
 
+type GlobalRoomInMongo={
+    _id:string
+    totalMembers:number
+    type:RoomType
+    updatedAt:Date
+    lastMess: Message|null
+}
+
 const RoomIndexes: IndexSpecification[] = [
     { key: { _id:1, createdAt: 1 },unique:true},
 ]
@@ -47,6 +55,7 @@ const RoomIndexes: IndexSpecification[] = [
 export {
     Room,
     RoomInMongo,
+    GlobalRoomInMongo,
     RoomIndexes,
     RoomTypes,
     InboxRoom

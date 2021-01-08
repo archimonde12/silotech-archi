@@ -1,3 +1,4 @@
+import { FriendInMongo } from "../../../models/Friend";
 import { ResultMessage } from "../../../models/ResultMessage";
 import { collectionNames, db, client, transactionOptions } from "../../../mongo";
 import { createCheckFriendQuery, getSlugByToken } from "../../../ulti";
@@ -26,9 +27,9 @@ const chat_friend_accept_request = async (root: any,
     }
     const transactionResults: any = await session.withTransaction(async () => {
       //Check friend relationship exist and request has been sent
-      const checkFriendQuery = createCheckFriendQuery(senderSlug,receiverSlug)
+      const checkFriendQuery = createCheckFriendQuery(senderSlug, receiverSlug)
       // console.log({ checkFriendQuery })
-      const checkFriendRelationShip = await db
+      const checkFriendRelationShip: FriendInMongo | null = await db
         .collection(collectionNames.friends)
         .findOne(checkFriendQuery, { session });
       // console.log({ checkFriendRelationShip });
@@ -59,7 +60,7 @@ const chat_friend_accept_request = async (root: any,
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");
     } else {
-      console.log("The transaction was successfully commit.");
+      console.log("The transaction was successfully committed.");
     }
     session.endSession()
     return finalResult
@@ -68,7 +69,7 @@ const chat_friend_accept_request = async (root: any,
     return {
       success: false,
       message: `Unexpected Error: ${e}`,
-      data:null
+      data: null
     }
   }
 
