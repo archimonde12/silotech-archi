@@ -19,30 +19,32 @@ const userReducer = (user: UserInMongo, globalRoomName: string) => {
 
 
 const InitGlobalRooms = async (globalRoomName: string) => {
-    console.log(`TRY TO CREATE GLOBAL ROOM WITH NAME = ${globalRoomName}`)
-    //Create global rooms
-    const GlobalRoomDocument: GlobalRoomInMongo = {
-        _id: globalRoomName,
-        totalMembers: 0,
-        type: "global",
-        updatedAt: new Date(),
-        lastMess: null
-    }
-    const checkGlobalExist = await db.collection(collectionNames.rooms).findOne({ _id: GlobalRoomDocument._id })
-    if (!checkGlobalExist) {
-        console.log(`Cannot found global room in rooms collection`)
-        await db.collection(collectionNames.rooms).insertOne(GlobalRoomDocument)
-        console.log(`New global was created`)
-        let allUserData: UserInMongo[] = await db.collection(collectionNames.users).find({}).toArray()
-        console.log(`${allUserData.length} document(s) was/were found in users collection`)
-        const newGlobalMemDocs: MemberGlobal[] = allUserData.map(user => userReducer(user, globalRoomName))
-        const insertMemRes = await db.collection(collectionNames.members).insertMany(newGlobalMemDocs)
-        console.log(`${insertMemRes.insertedCount} document(s) was/were inserted in members collection`)
-        const updateRoomRes = await db.collection(collectionNames.rooms).updateOne({_id:globalRoomName},{$inc:{totalMembers:insertMemRes.insertedCount}})
-        console.log(`${updateRoomRes.modifiedCount} document(s) was/were updated in rooms collection`)
-    }
-    console.log(`Global room has been created.`)
-    return
+    try {
+        console.log(`🌱 Try to create golalroom with name = ${globalRoomName}`)
+        //Create global rooms
+        const GlobalRoomDocument: GlobalRoomInMongo = {
+            _id: globalRoomName,
+            totalMembers: 0,
+            type: "global",
+            updatedAt: new Date(),
+            lastMess: null
+        }
+        const checkGlobalExist = await db.collection(collectionNames.rooms).findOne({ _id: GlobalRoomDocument._id })
+        if (!checkGlobalExist) {
+            console.log(`Cannot found global room in rooms collection`)
+            await db.collection(collectionNames.rooms).insertOne(GlobalRoomDocument)
+            console.log(`New global was created`)
+            let allUserData: UserInMongo[] = await db.collection(collectionNames.users).find({}).toArray()
+            console.log(`${allUserData.length} document(s) was/were found in users collection`)
+            const newGlobalMemDocs: MemberGlobal[] = allUserData.map(user => userReducer(user, globalRoomName))
+            const insertMemRes = await db.collection(collectionNames.members).insertMany(newGlobalMemDocs)
+            console.log(`${insertMemRes.insertedCount} document(s) was/were inserted in members collection`)
+            const updateRoomRes = await db.collection(collectionNames.rooms).updateOne({ _id: globalRoomName }, { $inc: { totalMembers: insertMemRes.insertedCount } })
+            console.log(`${updateRoomRes.modifiedCount} document(s) was/were updated in rooms collection`)
+        }
+        console.log(`Global room has been created.`)
+        return
+    } catch (e) { throw e }
 }
 
 const deleteGlobalRooms = async (globalRoomName: string) => {
@@ -65,4 +67,4 @@ const deleteGlobalRooms = async (globalRoomName: string) => {
 }
 
 
-export { InitGlobalRooms,deleteGlobalRooms }
+export { InitGlobalRooms, deleteGlobalRooms }

@@ -29,6 +29,13 @@ type InboxRoom = {
     lastMess: Message | null
 }
 
+type NewsRoomInMongo = {
+    _id: string
+    type:'news'
+    updatedAt:Date
+    lastMess:Message|null
+}
+
 type RoomInMongo = {
     _id: ObjectID
     title: string
@@ -54,6 +61,7 @@ const RoomIndexes: IndexSpecification[] = [
 
 export {
     Room,
+    NewsRoomInMongo,
     RoomInMongo,
     GlobalRoomInMongo,
     RoomIndexes,

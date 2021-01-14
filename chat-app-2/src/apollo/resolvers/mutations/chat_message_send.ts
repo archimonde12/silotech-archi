@@ -94,7 +94,7 @@ const sendMessToGlobal = async (
         slug: sender,
       },
     };
-    const { insertedId,insertedCount } = await db
+    const { insertedId, insertedCount } = await db
       .collection(collectionNames.messages)
       .insertOne(insertNewMessageDoc, { session });
     console.log(`${insertedCount} document was inserted to the messages collection. docId='${insertedId}'`);
@@ -102,7 +102,17 @@ const sendMessToGlobal = async (
       ...insertNewMessageDoc,
       _id: insertedId,
     };
+    //Update global room doc
+    const updateGlobalRoomRes = await db
+      .collection(collectionNames.rooms)
+      .updateOne(
+        { _id: GLOBAL_KEY },
+        { $set: { updatedAt: now, lastMess: dataResult } },
+        { session }
+      );
+    console.log(`${updateGlobalRoomRes.modifiedCount} doc was updated in the rooms collection`)
     pubsub.publish(LISTEN_CHANEL, { room_listen: insertNewMessageDoc });
+    pubsub.publish("userListInbox", { updateInboxList: true });
     return {
       success: true,
       message: `send message success!`,
@@ -188,6 +198,7 @@ const sendMessToPublicRoom = async (
         );
       console.log(`1 document was updated in rooms collection relate to new message updated`);
       pubsub.publish(LISTEN_CHANEL, { room_listen: insertNewMessageDoc });
+      pubsub.publish("userListInbox", { updateInboxList: true });
       return {
         success: true,
         message: `send message success!`,
@@ -303,6 +314,7 @@ const sendMessToUser = async (
       console.log(`1 new inboxRoom document was inserted in rooms collection`);
     }
     pubsub.publish(LISTEN_CHANEL, { inbox_room_listen: insertNewMessageDoc });
+    pubsub.publish("userListInbox", { updateInboxList: true });
     return {
       success: true,
       message: `send message success!`,

@@ -39,5 +39,6 @@ export const ADMIN_KEY = process.env.ADMIN_KEY
 if (!process.env.GLOBAL_KEY) throw new Error(`global key must be provided`)
 export const GLOBAL_KEY=process.env.GLOBAL_KEY
 
+export const NEWS_ROOM="NEWS_ROOM"
 
 

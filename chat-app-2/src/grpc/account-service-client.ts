@@ -1,6 +1,6 @@
 import { decode } from "jsonwebtoken";
 
-var PROTO_PATH = __dirname + "/account-service.proto";
+var PROTO_PATH = __dirname + "/proto/account-service.proto";
 
 var grpc = require("@grpc/grpc-js");
 var protoLoader = require("@grpc/proto-loader");

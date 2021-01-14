@@ -11,8 +11,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "apollo-server": "^2.19.1",
     "dotenv": "^8.2.0",
-    "slimbot": "^5.0.0"
+    "express": "^4.17.1",
+    "slimbot": "^5.0.0",
+    "telegraf": "^4.0.0"
   },
   "devDependencies": {
     "@types/node": "^14.14.20",
