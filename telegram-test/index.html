@@ -12,7 +12,7 @@
         data-size="large" data-onauth="onTelegramAuth(user)" data-request-access="write"></script>
     <script type="text/javascript">
         async function sendUserDataToServer(user) {
-            let res = await fetch("http://localhost:8501/", {
+            let res = await fetch("http://192.168.1.76:8501/", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify({
