@@ -9,8 +9,14 @@ const MessageTypes = {
   shareContact: {
     id: '1',
     name: 'shareContact'
+  },
+  system:{
+    id:'2',
+    name:'system'
   }
 }
+
+type MessageType="plaintext"|"shareContact"|"system"
 
 type Message = {
   roomId: string;

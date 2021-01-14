@@ -1,0 +1,12 @@
+syntax = "proto3";
+service AdminService {
+    rpc Call (Request) returns (Response) {}
+}
+message Request {
+    string method = 1;
+    string params = 2;
+}
+message Response {
+    string result = 1;
+    string error = 2;
+}

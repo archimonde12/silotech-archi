@@ -18,6 +18,7 @@ export const typeDefs = gql`
     plaintext
     bet
     shareContact
+    system
   }
 
   enum SendToType{
@@ -73,7 +74,7 @@ export const typeDefs = gql`
   } 
   
   type SystemMessage{
-    roomKey:String
+    roomId:String
     content:String
   }
 
@@ -85,7 +86,7 @@ export const typeDefs = gql`
 
   type Message {
     _id:ObjectID!
-    roomKey: String
+    roomId:  String
     sentAt: Date
     type: MessageType
     data: MessageData
@@ -179,6 +180,9 @@ export const typeDefs = gql`
     chat_friend_block(senderSlug:String!):ResultMessage!
     chat_friend_block_remove(senderSlug:String!):ResultMessage!
 
+    #System
+    chat_system_publish_news(data:MessData!):ResultMessage!
+
     #testWithTransactions
     test_with_transaction:ResultMessage
   }
@@ -186,5 +190,6 @@ export const typeDefs = gql`
   type Subscription {
     room_listen(roomType:RoomType!,roomId: String!): SubMessage
     inbox_room_listen(receiverSlug:String!):SubMessage
+    userListInbox:[Message]
   }
 `;

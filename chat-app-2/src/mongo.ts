@@ -8,6 +8,7 @@ import { createFakeUserToMongo } from "./initMongo/user";
 import { BlockMemberIndexes } from "./models/BlockMember";
 import { FriendIndexes } from "./models/Friend"
 import { InitGlobalRooms } from "./initMongo/globalRoom";
+import { InitNewsRoom } from "./initMongo/newsRoom";
 
 let client: MongoClient;
 let db: Db;
@@ -76,7 +77,7 @@ const connectMongoDb = async () => {
       db.collection(collectionNames.rooms).createIndexes(RoomIndexes),
       db.collection(collectionNames.friends).createIndexes(FriendIndexes)
     ]);
-    console.log(`Mongodb: connected`);
+    console.log(`🌐 Mongodb: connected`);
   } catch (err) {
     console.error(`Mongodb: disconnected`);
     await client?.close(true);
@@ -86,12 +87,7 @@ const connectMongoDb = async () => {
 };
 
 const initMongodb = async () => {
-  await InitGlobalRooms(GLOBAL_KEY)
-  await db.dropCollection("test")
-  await db.createCollection("test",{ capped : true, size:4000,  max : 5 } )
-  for(let i=1;i<10;i++){
-    await db.collection("test").insertOne({hoan:`hoan${i}`})
-  }
+  Promise.all([InitGlobalRooms(GLOBAL_KEY),InitNewsRoom()])
 };
 
 export { client, db, connectMongoDb, initMongodb, collectionNames, transactionOptions }; 

@@ -17,7 +17,7 @@ export const initRedis = async () => {
         })
 
         redis.on("connect", () => {
-            console.log("redis connected");
+            console.log("🌐 redis connected");
             getAsync = promisify(redis.get).bind(redis);
             setAsync=promisify(redis.set).bind(redis)
             existsAsync=promisify(redis.EXISTS).bind(redis)
@@ -33,7 +33,7 @@ export const initRedis = async () => {
         redis.on("error", function (error) {
             console.error(error);
 
-            console.log("redis not connected");
+            console.log(" redis not connected");
 
             redis.end(true);
 

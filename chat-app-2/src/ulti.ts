@@ -1,11 +1,10 @@
-import { logAndExitProcess } from "@sentry/node/dist/handlers";
-import { genSaltSync, hash, hashSync, compareSync } from "bcrypt";
-import { extendSchemaImpl } from "graphql/utilities/extendSchema";
-import { Client } from "grpc";
+import {getNewestNewsRoomMessage, newest_news_room_message} from "./apollo/resolvers/mutations/chat_system_publish_news"
 import md5 from "md5";
 import { ClientSession, ObjectID } from "mongodb";
-import { secretCombinePairKey } from "./config";
+import { NEWS_ROOM, secretCombinePairKey } from "./config";
 import { VerifyToken } from "./grpc/account-service-client";
+import { MemberInMongo } from "./models/Member";
+import { InboxRoom, NewsRoomInMongo } from "./models/Room";
 import { User } from "./models/User";
 import { collectionNames, db } from "./mongo";
 import { existsAsync } from "./redis";
@@ -95,3 +94,49 @@ export const createCheckFriendQuery = (senderSlug: string, reciverSlug: string) 
   slug1: senderSlug > reciverSlug ? senderSlug : reciverSlug,
   slug2: senderSlug <= reciverSlug ? senderSlug : reciverSlug,
 });
+
+export const ArrayRemoveNull=(_array:any[]):any[]=>{
+  return _array.filter(item=>item)
+}
+
+export const queryInbox = async (slug:string, limit:number) => {
+  try {
+    const newestNewsRoomMessage=await getNewestNewsRoomMessage()
+    //Get News Room Data
+    const newsRoomData: NewsRoomInMongo | null = await db.collection(collectionNames.rooms).findOne({ _id: NEWS_ROOM })
+    if (!newsRoomData) { throw new Error("news room not exist. Try to create new one") }
+    //Get All Public And Global And Inbox Room Of Slug
+    const membersData: MemberInMongo[] = await db
+      .collection(collectionNames.members)
+      .aggregate([
+        {
+          $match: {
+            slug
+          }
+        },
+        {
+          $lookup:
+          {
+            from: collectionNames.rooms,
+            localField: 'roomId',
+            foreignField: '_id',
+            as: 'roomDetails'
+          }
+        },
+      ]).toArray();
+    const AllRoomIdsOfSlug = membersData.map(member => member.roomId)
+    const AllRoomsDetails: InboxRoom[] = await db.collection(collectionNames.rooms).find({ $or: [{ _id: { $in: AllRoomIdsOfSlug } }, { pair: { $all: [{ slug }] } }] }).sort({ "lastMess.sentAt": -1 }).limit(limit).toArray()
+    const sortFunc = (a, b) => {
+      if (!a.lastMess) { return 1 }
+      if (!b.lastMess) { return -1 }
+      if (a.lastMess.sentAt < b.lastMess.sentAt) { return 1; }
+      if (a.lastMess.sentAt > b.lastMess.sentAt) { return -1; }
+      return 0;
+    }
+    AllRoomsDetails.sort(sortFunc)
+    let AllNewestMessage = ArrayRemoveNull(AllRoomsDetails.map(room => room.lastMess))
+    return [newestNewsRoomMessage,...AllNewestMessage]
+  } catch (e) {
+    throw e;
+  }
+}
