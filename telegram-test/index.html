@@ -11,8 +11,29 @@
     <script async src="https://telegram.org/js/telegram-widget.js?14" data-telegram-login="hoan_tele_test_bot"
         data-size="large" data-onauth="onTelegramAuth(user)" data-request-access="write"></script>
     <script type="text/javascript">
+        function sendUserDataToServer(user) {
+            let res = await fetch("http://localhost:8501/", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                    query: `
+                    mutation{
+                        handle_telegram_user_info(user:{
+                            auth_date:${user.auth_date}
+                            first_name:${user.first_name}
+                            last_name:${user.last_name}
+                            hash:${user.hash}
+                            id:${user.id}
+                        }){
+                            error
+                            result
+                        }
+                        }`,
+                }),
+            });
+        }
         function onTelegramAuth(user) {
-            console.log(user)
+            sendUserDataToServer(user)
             alert('Logged in as ' + user.first_name + ' ' + user.last_name + ' (' + user.id + (user.username ? ', @' + user.username : '') + ')');
         }
         //send token to server

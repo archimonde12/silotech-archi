@@ -1,6 +1,5 @@
 var PROTO_PATH = __dirname + "../../../src/protos/rate.proto";
 
-var axios = require('axios')
 var grpc = require("@grpc/grpc-js");
 var protoLoader = require("@grpc/proto-loader");
 const { throws } = require('assert');
@@ -16,16 +15,6 @@ var packageDefinition = protoLoader.loadSync(PROTO_PATH, {
   oneofs: true,
 });
 var rate_proto = grpc.loadPackageDefinition(packageDefinition).rateTrxUsdt;
-
-// async function searchRate() {
-//   try {
-//     let rate;
-//     const url = 'https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd'
-//     let data = await axios.get(url)
-//     rate = data.data.tron.usd
-//     return rate
-//   } catch (err) { throw err } 
-// }
 
 async function GetRate(_, callback) {
   try {
