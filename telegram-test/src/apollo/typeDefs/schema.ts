@@ -23,8 +23,13 @@ export const typeDefs = gql`
     username:String!
   }
 
+  input googleUserData{
+    id_token:String!
+  }
+
   type Mutation{
     handle_telegram_user_info(userData:UserData!):Result
+    handle_google_user_info(googleUserData:googleUserData!):Result
   }
 
   # type Mutation{}

@@ -13,3 +13,8 @@ export const BOT_TOKEN=process.env.BOT_TOKEN
 //GrapQL 
 if (!process.env.GRAPHQL_PORT) throw new Error(`graphql port must be provided`)
 export const graphqlPort = process.env.GRAPHQL_PORT
+
+if (!process.env.GOOGLE_CLIENT_ID) throw new Error(`googleClientId port must be provided`)
+export const googleClientId=process.env.GOOGLE_CLIENT_ID
+if (!process.env.GOOGLE_CLIENT_SECRET) throw new Error(`googleClientSecret port must be provided`)
+export const googleClientSecret=process.env.GOOGLE_CLIENT_SECRET
