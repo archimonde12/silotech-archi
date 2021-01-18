@@ -518,15 +518,15 @@
     <div class="fb-login-button" data-width="" data-size="large" data-button-type="continue_with" data-layout="default"
         data-auto-logout-link="true" data-use-continue-as="false"></div>
     <script>
-        window.fbAsyncInit = function () {
-            FB.init({
+        window.fbAsyncInit = async function () {
+            await FB.init({
                 appId: '750013695911626',
                 autoLogAppEvents: true,
                 xfbml: true,
                 version: 'v9.0'
             });
 
-            FB.login(response=>console.log(response))
+            await FB.login(response=>console.log(response))
         };
     </script>
     <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js">
