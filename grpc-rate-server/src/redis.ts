@@ -3,6 +3,8 @@ import { promisify } from "util";
 import { redisUri, redisPort, redisAuth } from "./config";
 
 export let redis: RedisClient;
+export let pub: RedisClient;
+export let sub: RedisClient;
 export let getKeys: (pattern: string) => Promise<string[]>;
 export let getAsync: (key: string) => Promise<string | null>;
 export let setAsync: (key: string, val: string) => Promise<any>;
@@ -58,6 +60,7 @@ export const connectRedis = async () =>
       lrangeAsync = promisify(redis.lrange).bind(redis);
       expireAsync = promisify(redis.expire).bind(redis);
       setExpireAsync = promisify(redis.setex).bind(redis);
+      redis.WATCH()
       ttlAsync = promisify(redis.ttl).bind(redis);
       multiAsync = redis.multi();
       resolve();

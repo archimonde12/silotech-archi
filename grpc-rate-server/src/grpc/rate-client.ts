@@ -14,10 +14,7 @@ var rate_proto = grpc.loadPackageDefinition(packageDefinition).rateTrxUsdt;
 
 async function clientMain() {
   var target = "localhost:50051";
-  var client = new rate_proto.RateTRX(
-    target,
-    grpc.credentials.createInsecure()
-  );
+  var client = new rate_proto.RateTRX(target, grpc.credentials.createInsecure());
 
   const clientGetRate = () => {
     return new Promise<any>((resolve, reject) => {

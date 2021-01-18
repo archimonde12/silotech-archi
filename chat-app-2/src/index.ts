@@ -8,16 +8,20 @@ import { initRedis } from "./redis";
 
 const start = async () => {
   try {
-    await connectMongoDb();
-    await initMongodb();
+    // await connectMongoDb();
+    // await initMongodb();
     // await deleteGlobalRooms(GLOBAL_KEY)
-    await initApollo();
+    // await initApollo();
     await initRedis()
-    await initGrpcServer()
-    await connectBrickConsumer()
+    // await initGrpcServer()
+    // await connectBrickConsumer()
   } catch (e) {
     throw e;
   } 
 };
 
 start();
+
+const test = async()=>{
+  
+}
