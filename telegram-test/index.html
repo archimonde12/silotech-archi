@@ -527,7 +527,9 @@
                 version: 'v9.0'
             });
             console.log("try to facebook login:")
-            await FB.login(response => console.log(response))
+            const fbLoginRes=await FB.login(response => console.log(response))
+            const checkFbAccessToken="https://graph.facebook.com/app/?access_token=EAAKqIivr5soBAFr5pA7CA2ReLmRp25rF5KnyKShKAE9Q9GJZBiB2FgVdRCnZC0eKdz9PDVy1q0qexYyDtJcuZAaZB7mzm0G41gyVZCiqEjUa6iZBWXMholMFiNylO03CZCrhAPVZAayVzjt6KDaG1nxXySTQ12ltmxWvzrRgtzO4ZBEx2i8qi7owoORwrPFZCyM3X4TZBsdZCSeZBZAQZDZD"
+            let checkRes=await fetch()
         };
     </script>
     <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js">
@@ -538,10 +540,11 @@
     <script>
         function onSignIn(googleUser) {
             function init() {
-                gapi.load('auth2', function () {
-                    /* Ready. Make a call to gapi.auth2.init or some other API */
+                gapi.load('auth2', function (response) {
+                    console.log(response)
                 });
             }
+            console.log(googleUser)
             var profile = googleUser.getBasicProfile();
             console.log('ID: ' + profile.getId()); // Do not send to your backend! Use an ID token instead.
             console.log('Name: ' + profile.getName());
