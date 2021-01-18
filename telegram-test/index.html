@@ -534,9 +534,7 @@
 
     </script>
     <script src="https://apis.google.com/js/platform.js" async defer></script>
-    <script src="https://apis.google.com/js/platform.js?onload=init" async defer></script>
-    <div class="g-signin2" data-onsuccess="onSignIn">
-    </div>
+
     <script>
         function onSignIn(googleUser) {
             function init() {
@@ -551,6 +549,8 @@
             console.log('Email: ' + profile.getEmail()); // This is null if the 'email' scope is not present.
         }
     </script>
+    <div class="g-signin2" data-onsuccess="onSignIn">
+    </div>
 </body>
 
 </html>
