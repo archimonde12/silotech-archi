@@ -14,16 +14,17 @@ export const typeDefs = gql`
     result:String
   }
 
-  input User{
+  input UserData{
     auth_date: Int!
     first_name: String!
     hash: String!
     id: Int!
     last_name: String!
+    username:String!
   }
 
   type Mutation{
-    handle_telegram_user_info(user:User!):Result
+    handle_telegram_user_info(userData:UserData!):Result
   }
 
   # type Mutation{}
