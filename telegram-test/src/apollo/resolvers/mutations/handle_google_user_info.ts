@@ -10,20 +10,21 @@ const handle_google_user_info = async (
     ctx: any
 ): Promise<any> => {
     try {
+        //Google Documentation : https://developers.google.com/identity/sign-in/web/backend-auth
         const { googleUserData } = args
         const { id_token } = googleUserData
-        async function verify() {
-            const ticket = await client.verifyIdToken({
-                idToken: id_token,
-                audience: googleClientId,
-            });
-            const payload: any = ticket.getPayload();
-            const userid = payload['sub']
-            console.log({ userid })
+        const ticket = await client.verifyIdToken({
+            idToken: id_token,
+            audience: googleClientId,
+        });
+        const payload: any = ticket.getPayload();
+        console.log({payload})
+        //Example payload /Users/hoan/silotech/silotech-archi/telegram-test/src/model example/GooglePayload.ts
+        return {
+            error:null,
+            result:{payload}
         }
-        verify().catch(console.error);
     } catch (err) {
-        console.log(err)
         return {
             error: err,
             result: null

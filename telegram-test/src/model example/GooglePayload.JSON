@@ -1,0 +1,19 @@
+{
+  "payload": {
+    "iss": "accounts.google.com",
+    "azp": "353300949073-fdndvhqqpsm099lnl7d59q7af5067c2a.apps.googleusercontent.com",
+    "aud": "353300949073-fdndvhqqpsm099lnl7d59q7af5067c2a.apps.googleusercontent.com",
+    "sub": "110750918138996172661",
+    "email": "hoan.mongodb.test@gmail.com",
+    "email_verified": true,
+    "at_hash": "mLcKpm3r20lwrbnUsAIqkg",
+    "name": "Hoàn Lưu Đình",
+    "picture": "https://lh4.googleusercontent.com/-CPPPwcPJ0lk/AAAAAAAAAAI/AAAAAAAAAAA/AMZuucnyklo9h7Pwd7qZ6dplLwYeA3Y8Ag/s96-c/photo.jpg",
+    "given_name": "Hoàn",
+    "family_name": "Lưu Đình",
+    "locale": "vi",
+    "iat": 1611020573,
+    "exp": 1611024173,
+    "jti": "0019655b98f62c670408bd50887a94da2e114c19"
+  }
+}
