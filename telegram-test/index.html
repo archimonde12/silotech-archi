@@ -527,7 +527,7 @@
                 version: 'v9.0'
             });
             console.log("try to facebook login:")
-            const fbLoginRes=await FB.login(response => console.log(response))
+            const fbLoginRes=await FB.login(response => console.log(response),{scope: 'public_profile,email'})
             const checkFbAccessToken="https://graph.facebook.com/app/?access_token=EAAKqIivr5soBAFr5pA7CA2ReLmRp25rF5KnyKShKAE9Q9GJZBiB2FgVdRCnZC0eKdz9PDVy1q0qexYyDtJcuZAaZB7mzm0G41gyVZCiqEjUa6iZBWXMholMFiNylO03CZCrhAPVZAayVzjt6KDaG1nxXySTQ12ltmxWvzrRgtzO4ZBEx2i8qi7owoORwrPFZCyM3X4TZBsdZCSeZBZAQZDZD"
             let checkRes=await fetch()
         };

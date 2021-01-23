@@ -14,7 +14,7 @@ const handle_facebook_user_info = async (
     ctx: any
 ): Promise<any> => {
     try {
-        const { facebookUserData } = args
+        const facebookUserData = args
         const { accessToken, userID } = facebookUserData
         const uri = `https://graph.facebook.com/${userID}/?access_token=${accessToken}`
         console.log({ uri })
