@@ -1,7 +1,5 @@
 import { initApollo } from "./apollo";
-import { GLOBAL_KEY } from "./config";
 import { initGrpcServer } from "./grpc";
-import { deleteGlobalRooms } from "./initMongo/globalRoom";
 import { connectBrickConsumer } from "./kafka";
 import { connectMongoDb, initMongodb } from "./mongo";
 import { initRedis } from "./redis";
