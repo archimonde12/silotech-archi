@@ -38,7 +38,6 @@ const chat_room_remove = async (
     //Verify token and get slug
     const admin = await getSlugByToken(token);
     let finalResult: ResultMessage = {
-      success: false,
       message: "",
       data: null,
     };
@@ -142,7 +141,6 @@ const chat_room_remove = async (
       };
       pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
       finalResult = {
-        success: true,
         message: `${totalMemberRemove} member(s) has been removed!`,
         data: null,
       };
@@ -155,12 +153,13 @@ const chat_room_remove = async (
     session.endSession();
     return finalResult;
   } catch (e) {
-    console.log("The transaction was aborted due to an unexpected error: " + e);
-    return {
-      success: false,
-      message: `Unexpected Error: ${e}`,
-      data: null,
-    };
+    await session.abortTransaction();
+    console.log("The transaction was aborted due to : " + e);
+    if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
+      throw new Error(e.message)
+    } else {
+      throw new Error("CA:004")
+    }
   }
 };
 export { chat_room_remove };

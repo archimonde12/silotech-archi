@@ -80,9 +80,9 @@ export const checkUsersInDatabase = async (
 
 export const getSlugByToken = async (token: String): Promise<string> => {
   try {
-    if (!token || !token.trim()) throw new Error("token must be provided!");
+    if (!token || !token.trim()) throw new Error("CA:001");
     const tokenVerifyRes = await VerifyToken(token);
-    if (!tokenVerifyRes) throw new Error("token invalid!");
+    if (!tokenVerifyRes) throw new Error("CA:002");
     return tokenVerifyRes.result;
   } catch(e){
     throw e

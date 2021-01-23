@@ -6,6 +6,9 @@ import { checkUsersInDatabase, createCheckFriendQuery, getSlugByToken } from "..
 const chat_friend_block = async (root: any,
   args: any,
   ctx: any): Promise<any> => {
+      //Start transaction
+  const session = client.startSession();
+  try {
   console.log("======FRIEND BLOCK REQUEST=====");
   //Get arguments
   console.log({ args });
@@ -13,26 +16,17 @@ const chat_friend_block = async (root: any,
   console.log({ token })
   const { senderSlug } = args;
   //Check arguments
-  if (!senderSlug || !senderSlug.trim())
-    throw new Error("all arguments must be provided");
-  //Start transaction
-  const session = client.startSession();
-  try {
+  if (!senderSlug || !senderSlug.trim()) throw new Error("CA:009");
     //Verify token and get slug
     const receiverSlug = await getSlugByToken(token);
     let finalResult: ResultMessage = {
-      success: false,
       message: '',
       data: null
     }
     const transactionResults: any = await session.withTransaction(async () => {
       //Check senderSlug exist in database
       let slugsInDatabase = await checkUsersInDatabase([senderSlug], session)
-      if (slugsInDatabase.length !== 1) {
-        await session.abortTransaction();
-        finalResult.message = `${senderSlug} is not exist in database!`
-        return
-      }
+      if (slugsInDatabase.length !== 1) throw new Error("CA:009")
       //Check friend relationship exist and request has been sent
       const checkFriendQuery = createCheckFriendQuery(senderSlug, receiverSlug)
       const checkFriend: FriendInMongo | null = await db
@@ -56,17 +50,12 @@ const chat_friend_block = async (root: any,
           .collection(collectionNames.friends)
           .insertOne(newFriendDocument, { session });
         console.log(`1 new document was inserted to friends collection`)
-        finalResult.success=true
         finalResult.message = `${receiverSlug} blocked ${senderSlug}!`
         return
       }
       console.log("1 document was found in friends collection")
       //update friend documents if exist
-      if (checkFriend._blockRequest) {
-        await session.abortTransaction();
-        finalResult.message = `This relationship already blocked by ${checkFriend._blockRequest}`;
-        return
-      }
+      if (checkFriend._blockRequest) throw new Error("CA:012")
       const updateDoc = {
         $set: { _friendRequestFrom: null, isBlock: true, _blockRequest: receiverSlug },
       };
@@ -74,8 +63,7 @@ const chat_friend_block = async (root: any,
         .collection(collectionNames.friends)
         .updateOne(checkFriendQuery, updateDoc, { session });
       console.log(`${modifiedCount} document(s) was/were updated in friends collection`)
-      finalResult.success=true
-      finalResult.message = `${receiverSlug} blocked ${senderSlug}!`
+      finalResult.message = `block successful!`
     }, transactionOptions)
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");
@@ -85,11 +73,12 @@ const chat_friend_block = async (root: any,
     session.endSession()
     return finalResult
   } catch (e) {
-    console.log("The transaction was aborted due to an unexpected error: " + e);
-    return {
-      success: false,
-      message: `Unexpected Error: ${e}`,
-      data:null
+    await session.abortTransaction();
+    console.log("The transaction was aborted due to : " + e);
+    if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
+      throw new Error(e.message)
+    } else {
+      throw new Error("CA:004")
     }
   }
 }

@@ -8,22 +8,20 @@ const chat_friend_send_request = async (
   args: any,
   ctx: any
 ): Promise<any> => {
-  console.log("======FRIEND REQUEST SEND=====");
-  //Get arguments
-  console.log({ args });
-  const token = ctx.req.headers.authorization;
-  const { receiverSlug } = args;
-  //Check arguments
-  if (!receiverSlug || !receiverSlug.trim())
-    throw new Error("all arguments must be provided");
-
   //Start transaction
   const session = client.startSession();
   try {
+    console.log("======FRIEND REQUEST SEND=====");
+    //Get arguments
+    console.log({ args });
+    const token = ctx.req.headers.authorization;
+    const { receiverSlug } = args;
+    //Check arguments
+    if (!receiverSlug || !receiverSlug.trim()) throw new Error("CA:009");
+
     //Verify token and get slug
     const senderSlug = await getSlugByToken(token);
     let finalResult: ResultMessage = {
-      success: false,
       message: '',
       data: null
     }
@@ -37,23 +35,13 @@ const chat_friend_send_request = async (
       if (checkFriend) {
         console.log("1 document was found in friends collection");
         //Check is Friend
-        if (checkFriend.isFriend) {
-          await session.abortTransaction();
-          finalResult.message = `${senderSlug} and ${receiverSlug} already be friend!`;
-          return;
-        }
+        if (checkFriend.isFriend) throw new Error("CA:004")
         //Check block
-        if (checkFriend.isBlock) {
-          await session.abortTransaction();
-          finalResult.message = `Can not sent request because this friend relationship has been block`;
-          return;
-        }
+        if (checkFriend.isBlock) throw new Error("CA:005")
         //Check friend request from
-        if (checkFriend._friendRequestFrom !== null) {
-          await session.abortTransaction();
-          finalResult.message = `${checkFriend._friendRequestFrom} already sent request!`;
-          return;
-        }
+        if (checkFriend._friendRequestFrom !== null) throw new Error("CA:006")
+        //Check friend request from
+        if (checkFriend._friendRequestFrom !== null) throw new Error("CA:014")
         //update friend document
         const updateRes = await db
           .collection(collectionNames.friends)
@@ -63,7 +51,6 @@ const chat_friend_send_request = async (
             { session }
           );
         console.log(`${updateRes.modifiedCount} document(s) was/were updated in friends collection to include the friend request from`)
-        finalResult.success=true
         finalResult.message = `${senderSlug} sent a friend request to ${receiverSlug}`
         return
       }
@@ -73,11 +60,7 @@ const chat_friend_send_request = async (
       const checkSlugs = [senderSlug, receiverSlug];
       //Check sender and receiver exist in database
       const slugsInDatabase = await checkUsersInDatabase(checkSlugs, session)
-      if (slugsInDatabase.length !== 2) {
-        await session.abortTransaction();
-        finalResult.message = `${checkSlugs.filter(user => !slugsInDatabase.includes(user))} is not exist in database!`
-        return
-      }
+      if (slugsInDatabase.length !== 2) throw new Error("CA:009")
       const newFriendDocument: Friend = {
         slug1: senderSlug > receiverSlug ? senderSlug : receiverSlug,
         slug2: senderSlug <= receiverSlug ? senderSlug : receiverSlug,
@@ -94,8 +77,7 @@ const chat_friend_send_request = async (
         .insertOne(newFriendDocument, { session });
       // console.log({ insertedId });
       console.log(`1 new document was inserted to friends collection`)
-      finalResult.success=true
-      finalResult.message=`${senderSlug} sent a friend request ${receiverSlug}!`
+      finalResult.message = `${senderSlug} sent a friend request to ${receiverSlug}!`
     }, transactionOptions)
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");
@@ -105,11 +87,12 @@ const chat_friend_send_request = async (
     session.endSession()
     return finalResult
   } catch (e) {
-    console.log("The transaction was aborted due to an unexpected error: " + e);
-    return {
-      success: false,
-      message: `Unexpected Error: ${e}`,
-      data:null
+    await session.abortTransaction();
+    console.log("The transaction was aborted due to : " + e);
+    if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
+      throw new Error(e.message)
+    } else {
+      throw new Error("CA:004")
     }
   }
 };

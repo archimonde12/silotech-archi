@@ -22,19 +22,20 @@ const chat_message_send = async (
   console.log("======MESSAGE SEND=====");
   //Get arguments
   const token = ctx.req.headers.authorization;
-  const { sendTo, type, data } = args;
-  const { roomType, receiver } = sendTo;
+  const { target, message } = args;
+  const { roomType, receiver } = target;
+  const { type, data } = message
   //Check arguments
-  if (!roomType || !type || !data)
-    throw new Error("all arguments must be provided");
-
+  if (!roomType) throw new Error("CA:021");
+  if (!receiver) throw new Error("CA:022")
+  if (!type) throw new Error("CA:023")
+  if (!data) throw new Error("CA:024")
   //Start transcation
   const session = client.startSession();
   try {
     //Verify token and get slug
     const sender = await getSlugByToken(token);
     let finalResult: ResultMessage = {
-      success: false,
       message: '',
       data: null
     }
@@ -68,11 +69,12 @@ const chat_message_send = async (
     session.endSession()
     return finalResult
   } catch (e) {
-    console.log("The transaction was aborted due to an unexpected error: " + e);
-    return {
-      success: false,
-      message: `Unexpected Error: ${e}`,
-      data
+    await session.abortTransaction();
+    console.log("The transaction was aborted due to : " + e);
+    if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
+      throw new Error(e.message)
+    } else {
+      throw new Error("CA:004")
     }
   }
 };
@@ -114,17 +116,11 @@ const sendMessToGlobal = async (
     pubsub.publish(LISTEN_CHANEL, { room_listen: insertNewMessageDoc });
     pubsub.publish("userListInbox", { updateInboxList: true });
     return {
-      success: true,
       message: `send message success!`,
       data: dataResult,
     };
   } catch (e) {
-    await session.abortTransaction();
-    return {
-      success: false,
-      message: `Unexpected err: ${e}`,
-      data: null,
-    }
+   throw e
   }
 };
 const sendMessToPublicRoom = async (
@@ -143,12 +139,7 @@ const sendMessToPublicRoom = async (
       const roomData: RoomInMongo | null = await checkRoomIdInMongoInMutation(objectRoomId, session);
       if (!roomData) {
         console.log("0 room was found in rooms collection");
-        await session.abortTransaction()
-        return {
-          success: false,
-          message: `publicRoom not exist`,
-          data: null
-        }
+        throw new Error("CA:025")
       }
       console.log(`1 room (title='${roomData.title}',master='${roomData.createdBy.slug}') was found in rooms collection`);
       //Check member
@@ -161,12 +152,7 @@ const sendMessToPublicRoom = async (
       //console.log({ memberData });
       if (!memberData) {
         console.log("0 member was found in members collection");
-        await session.abortTransaction();
-        return {
-          success: false,
-          message: `${sender} is not a member of this room`,
-          data: null
-        }
+        throw new Error("CA:026")
       }
       console.log(`1 member document (slug='${memberData.slug}') was found in members collection`)
       //Add new message doc
@@ -200,24 +186,13 @@ const sendMessToPublicRoom = async (
       pubsub.publish(LISTEN_CHANEL, { room_listen: insertNewMessageDoc });
       pubsub.publish("userListInbox", { updateInboxList: true });
       return {
-        success: true,
         message: `send message success!`,
         data: dataResult,
       };
     }
-    await session.abortTransaction();
-    return {
-      success: false,
-      message: `roomId invalid`,
-      data: null,
-    }
+    throw new Error("CA:027")
   } catch (e) {
-    await session.abortTransaction();
-    return {
-      success: false,
-      message: `Unexpected err: ${e}`,
-      data: null,
-    }
+   throw e
   }
 };
 const sendMessToUser = async (
@@ -228,29 +203,12 @@ const sendMessToUser = async (
   session: ClientSession
 ) => {
   try {
-    console.log({ receiver })
-    if (!receiver || !receiver.trim()) {
-      console.log(`arguments invalid`)
-      await session.abortTransaction();
-      return {
-        success: false,
-        message: `receiver username must be provided`,
-        data: null
-      }
-    }
     //Inbox Message
     const roomKey = createInboxRoomKey(sender, receiver);
 
     //Check receiver exist in database
     let slugsInDatabase = await checkUsersInDatabase([receiver], session)
-    if (slugsInDatabase.length !== 1) {
-      await session.abortTransaction();
-      return {
-        success: false,
-        message: `${receiver} is not exist in database!`,
-        data: null
-      }
-    }
+    if (slugsInDatabase.length !== 1) throw new Error("CA:028")
     //Check friend
     const checkFriendQuery = createCheckFriendQuery(sender, receiver)
     const checkFriend = await db
@@ -258,22 +216,10 @@ const sendMessToUser = async (
       .findOne(checkFriendQuery, { session });
     if (!checkFriend || !checkFriend.isFriend) {
       console.log(`0 document was found in friends collection`)
-      await session.abortTransaction();
-      return {
-        success: false,
-        message: `${sender} and ${receiver} must be friend before start a conversation!`,
-        data: null
-      }
+     throw new Error("CA:029")
     }
     console.log(`1 document was found in friends collection`)
-    if (checkFriend.isBlock) {
-      await session.abortTransaction();
-      return {
-        success: false,
-        message: `This conversation has been blocked`,
-        data: null
-      }
-    }
+    if (checkFriend.isBlock) throw new Error("CA:030")
     //Add new message doc
     const now = new Date();
     const insertNewMessageDoc: Message = {
@@ -316,17 +262,11 @@ const sendMessToUser = async (
     pubsub.publish(LISTEN_CHANEL, { inbox_room_listen: insertNewMessageDoc });
     pubsub.publish("userListInbox", { updateInboxList: true });
     return {
-      success: true,
       message: `send message success!`,
       data: dataResult,
     };
   } catch (e) {
-    await session.abortTransaction();
-    return {
-      success: false,
-      message: `Unexpected err: ${e}`,
-      data: null,
-    }
+    throw e
   }
 };
 export { chat_message_send };

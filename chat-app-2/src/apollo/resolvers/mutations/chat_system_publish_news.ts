@@ -5,16 +5,16 @@ import { client, collectionNames, db, transactionOptions } from "../../../mongo"
 import { getAsync } from "../../../redis";
 import { LISTEN_CHANEL, LIST_INBOX_CHANEL, pubsub } from "../subscriptions";
 
-let newest_news_room_message:MessageInMongo|null=null
-const setNewestNewsRoomMessage=(_message:MessageInMongo)=>{
-    newest_news_room_message=_message
+let newest_news_room_message: MessageInMongo | null = null
+const setNewestNewsRoomMessage = (_message: MessageInMongo) => {
+    newest_news_room_message = _message
 }
 
-const getNewestNewsRoomMessage=async ()=>{
-    if(!newest_news_room_message){
-        const key='chat-api.news_room.last_message'
-        const getFromRedis=await getAsync(key)
-        if(!getFromRedis){
+const getNewestNewsRoomMessage = async () => {
+    if (!newest_news_room_message) {
+        const key = 'chat-api.news_room.last_message'
+        const getFromRedis = await getAsync(key)
+        if (!getFromRedis) {
             return null
         }
         return JSON.parse(getFromRedis)
@@ -33,7 +33,6 @@ const chat_system_publish_news = async (root: any,
     const session = client.startSession();
     try {
         let finalResult: ResultMessage = {
-            success: false,
             message: '',
             data: null
         }
@@ -57,7 +56,7 @@ const chat_system_publish_news = async (root: any,
                 finalResult.message = `inserted fail`
                 return
             }
-            setNewestNewsRoomMessage({...newMessage,_id:insertRes.insertedId})
+            setNewestNewsRoomMessage({ ...newMessage, _id: insertRes.insertedId })
             //Update news room 
             const updateDoc = {
                 $set: {
@@ -67,8 +66,6 @@ const chat_system_publish_news = async (root: any,
             }
             const updateRoomRes = await db.collection(collectionNames.rooms).updateOne({ _id: NEWS_ROOM }, updateDoc, { session })
             console.log(`${updateRoomRes.modifiedCount} doc(s) was/were updated to rooms collection`)
-
-            finalResult.success = true
             finalResult.message = `add new message to news room success`
         }, transactionOptions)
         if (!transactionResults) {
@@ -81,13 +78,14 @@ const chat_system_publish_news = async (root: any,
         return finalResult;
     }
     catch (e) {
-        console.log("The transaction was aborted due to an unexpected error: " + e);
-        return {
-            success: false,
-            message: `Unexpected Error: ${e}`,
-            data: null
+        await session.abortTransaction();
+        console.log("The transaction was aborted due to : " + e);
+        if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
+            throw new Error(e.message)
+        } else {
+            throw new Error("CA:004")
         }
     }
 }
 
-export { chat_system_publish_news,newest_news_room_message,setNewestNewsRoomMessage,getNewestNewsRoomMessage}
+export { chat_system_publish_news, newest_news_room_message, setNewestNewsRoomMessage, getNewestNewsRoomMessage }

@@ -34,7 +34,6 @@ const chat_room_remove_block = async (
     //Verify token and get slug
     const admin = await getSlugByToken(token);
     let finalResult: ResultMessage = {
-      success: false,
       message: "",
       data: null,
     };
@@ -83,7 +82,6 @@ const chat_room_remove_block = async (
         return;
       }
       finalResult = {
-        success: true,
         message: `${blockMemberSlug} has been remove from block list!`,
         data: null,
       };
@@ -96,12 +94,13 @@ const chat_room_remove_block = async (
     session.endSession();
     return finalResult;
   } catch (e) {
-    console.log("The transaction was aborted due to an unexpected error: " + e);
-    return {
-      success: false,
-      message: `Unexpected Error: ${e}`,
-      data: null,
-    };
+    await session.abortTransaction();
+    console.log("The transaction was aborted due to : " + e);
+    if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
+      throw new Error(e.message)
+    } else {
+      throw new Error("CA:004")
+    }
   }
 };
 

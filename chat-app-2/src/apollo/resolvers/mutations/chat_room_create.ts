@@ -30,7 +30,6 @@ const chat_room_create = async (
     //Verify token and get slug
     const slug = await getSlugByToken(token);
     let finalResult: ResultMessage = {
-      success: false,
       message: "",
       data: null,
     };
@@ -105,7 +104,6 @@ const chat_room_create = async (
         .insertMany(insertMemberDocs, { session });
         console.log(`${insertNewMemRes.insertedCount} new document(s) was/were inserted to members collection`);
       const dataResult: RoomInMongo = { ...insertRoomDoc, _id: insertedId };
-      finalResult.success = true;
       finalResult.message = `create new room success!`;
       finalResult.data = dataResult;
     }, transactionOptions);
@@ -117,12 +115,13 @@ const chat_room_create = async (
     session.endSession();
     return finalResult;
   } catch (e) {
-    console.log("The transaction was aborted due to an unexpected error: " + e);
-    return {
-      success: false,
-      message: `Unexpected Error: ${e}`,
-      data: null,
-    };
+    await session.abortTransaction();
+    console.log("The transaction was aborted due to : " + e);
+    if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
+      throw new Error(e.message)
+    } else {
+      throw new Error("CA:004")
+    }
   }
 };
 

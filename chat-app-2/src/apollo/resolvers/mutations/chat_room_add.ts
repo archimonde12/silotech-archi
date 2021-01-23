@@ -16,20 +16,13 @@ const chat_room_add = async (root: any, args: any, ctx: any): Promise<any> => {
   const totalAddMember = addMemberSlugs.length;
 
   //Check arguments
-  if (!token || !roomId || !addMemberSlugs)
-    throw new Error("all arguments must be provided");
-  if (!roomId.trim()) throw new Error("roomId must be provided");
-
-  if (addMemberSlugs.length === 0)
-    throw new Error("addMemberSlugs must be provided");
-
+  if (!roomId || !addMemberSlugs ||addMemberSlugs.length === 0 || !roomId.trim()) throw new Error("CA:009");
   //Start transcation
   const session = client.startSession();
   try {
     //Verify token and get slug
     const admin = await getSlugByToken(token);
     let finalResult: ResultMessage = {
-      success: false,
       message: '',
       data: null
     }
@@ -38,11 +31,11 @@ const chat_room_add = async (root: any, args: any, ctx: any): Promise<any> => {
     }
     const transactionResults: any = await session.withTransaction(async () => {
       //Check roomId exist
-      const RoomData:RoomInMongo|null = await checkRoomIdInMongoInMutation(objectRoomId, session);
-      if(!RoomData){
+      const RoomData: RoomInMongo | null = await checkRoomIdInMongoInMutation(objectRoomId, session);
+      if (!RoomData) {
         console.log('0 document was found in the room collection')
-        await session.abortTransaction(); 
-        finalResult.message=`Cannot find a room with roomId=${roomId}`
+        await session.abortTransaction();
+        finalResult.message = `Cannot find a room with roomId=${roomId}`
         return
       }
       console.log('1 document was found in the room collection')
@@ -132,8 +125,7 @@ const chat_room_add = async (root: any, args: any, ctx: any): Promise<any> => {
         content: `${addMemberSlugs} has been added`,
       };
       pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
-      finalResult= {
-        success: true,
+      finalResult = {
         message: `add ${totalAddMember} new member(s) success!`,
         data: null,
       };
@@ -146,11 +138,12 @@ const chat_room_add = async (root: any, args: any, ctx: any): Promise<any> => {
     session.endSession()
     return finalResult
   } catch (e) {
-    console.log("The transaction was aborted due to an unexpected error: " + e);
-    return {
-      success: false,
-      message: `Unexpected Error: ${e}`,
-      data: null
+    await session.abortTransaction();
+    console.log("The transaction was aborted due to : " + e);
+    if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
+      throw new Error(e.message)
+    } else {
+      throw new Error("CA:004")
     }
   }
 };

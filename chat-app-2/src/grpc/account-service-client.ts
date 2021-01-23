@@ -35,7 +35,7 @@ const AccountService = (method: string, params: any) => {
 export async function VerifyToken(token) {
   try {
     let response = await AccountService("user_verify_auth_token", { token });
-    if (!response) throw new Error("token invalid!");
+    if (!response) throw new Error("CA:002");
     //console.log(response)
     console.log(`This is token of user: ${response.result}`)
     return response;

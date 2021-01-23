@@ -21,13 +21,13 @@ export const typeDefs = gql`
     system
   }
 
-  enum SendToType{
+  enum TargetRoomType{
     global
     publicRoom
     inbox
   }
 
-  union Result = Room | Message | Member
+  union Result =  Room | Message | Member
   union MessageData = PlainTextMessData | BetMessData | ShareContactData
   union SubMessage = Message | DeleteNoti | SystemMessage
   union MixRoom=Room|InboxRoom
@@ -38,9 +38,14 @@ export const typeDefs = gql`
     content: String
   }
 
-  input SentTo{
-    roomType:SendToType!
+  input Target{
+    roomType:TargetRoomType!
     receiver:String
+  }
+
+  input MessageInput{
+    type: MessageType!
+    data: MessData!
   }
 
   type User {
@@ -94,7 +99,6 @@ export const typeDefs = gql`
   }
 
   type ResultMessage {
-    success: Boolean!
     message: String
     data: Result
   }
@@ -116,7 +120,7 @@ export const typeDefs = gql`
     # Search users
     chat_search_users(text:String,limit:Int,skip:Int):[User]
     # Message
-    chat_get_messages_in_room( room: SentTo!, limit: Int, skip:Int): [Message]
+    chat_get_messages_in_room( room: Target!, limit: Int, skip:Int): [Message]
     # Room
     chat_get_room_details(roomId: ObjectID!): Room
     chat_get_all_rooms(limit:Int,skip:Int): [Room]
@@ -152,7 +156,6 @@ export const typeDefs = gql`
       blockMemberSlugs: [String!]
     ): ResultMessage!
     chat_room_remove_block(
-    
       roomId:ObjectID!
       blockMemberSlug:String!
     ): ResultMessage!
@@ -163,9 +166,8 @@ export const typeDefs = gql`
     ):ResultMessage!
     # Message
     chat_message_send(
-      sendTo: SentTo!
-      type: MessageType!
-      data: MessData!
+      target: Target!
+      message:MessageInput!
     ): ResultMessage!
 
     chat_message_delete(
@@ -182,9 +184,6 @@ export const typeDefs = gql`
 
     #System
     chat_system_publish_news(data:MessData!):ResultMessage!
-
-    #testWithTransactions
-    test_with_transaction:ResultMessage
   }
 
   type Subscription {

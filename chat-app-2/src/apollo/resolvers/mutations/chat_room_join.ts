@@ -31,7 +31,6 @@ const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
     //Verify token and get slug
     const newMemberSlug = await getSlugByToken(token);
     let finalResult: ResultMessage = {
-      success: false,
       message: "",
       data: null,
     };
@@ -119,7 +118,6 @@ const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
       };
       pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
       finalResult = {
-        success: true,
         message: `join room success!`,
         data: dataResult,
       };
@@ -132,12 +130,13 @@ const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
     session.endSession();
     return finalResult;
   } catch (e) {
-    console.log("The transaction was aborted due to an unexpected error: " + e);
-    return {
-      success: false,
-      message: `Unexpected Error: ${e}`,
-      data: null,
-    };
+    await session.abortTransaction();
+    console.log("The transaction was aborted due to : " + e);
+    if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
+      throw new Error(e.message)
+    } else {
+      throw new Error("CA:004")
+    }
   }
 };
 export { chat_room_join };
