@@ -1,6 +1,9 @@
+import { validate, validateOrReject } from "class-validator";
 import path from "path";
 import { initApollo } from "./apollo"
 import { BOT_TOKEN } from "./config";
+import { job } from "./cron";
+import { Post } from "./validator";
 var express = require('express')
 var app = express()
 
@@ -16,13 +19,15 @@ const slimbot = new Slimbot(BOT_TOKEN);
 slimbot.on('message', message => {
   console.log(message)
   slimbot.sendMessage(message.chat.id, 'Message received');
+
 });
 
 
 
 function start() {
-  initApollo()
-  slimbot.startPolling();
+  // initApollo()
+  // slimbot.startPolling();
+  job.start()
 }
 
 start()
