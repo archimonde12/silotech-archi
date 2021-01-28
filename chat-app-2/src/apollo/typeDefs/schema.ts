@@ -117,20 +117,21 @@ export const typeDefs = gql`
   }
 
   type Query {
+    test:String
     # Search users
-    chat_search_users(text:String,limit:Int,skip:Int):[User]
+    chat_search_users(text:String,limit:Int):[User]
     # Message
-    chat_get_messages_in_room( room: Target!, limit: Int, skip:Int): [Message]
+    chat_get_messages_in_room( room: Target!, pageSize:Int,page:Int): [Message]
     # Room
     chat_get_room_details(roomId: ObjectID!): Room
-    chat_get_all_rooms(limit:Int,skip:Int): [Room]
-    chat_get_inbox_rooms( limit: Int, skip:Int):[InboxRoom]
-    chat_get_mix_rooms(limit:Int,skip:Int):[MixRoom]
+    chat_get_all_rooms(pageSize:Int,page:Int): [Room]
+    chat_get_inbox_rooms( pageSize:Int,page:Int):[InboxRoom]
+    chat_get_mix_rooms(pageSize:Int,page:Int):[MixRoom]
     # Member
-    chat_get_all_members(roomId: ObjectID!,limit:Int,skip:Int): [Member]
+    chat_get_all_members(roomId: ObjectID!,pageSize:Int,page:Int): [Member]
     # Friend
-    chat_get_all_friends(limit:Int,skip:Int):[User]
-    chat_get_all_friend_requests(limit:Int,skip:Int):[User]
+    chat_get_all_friends(pageSize:Int,page:Int):[User]
+    chat_get_all_friend_requests(pageSize:Int,page:Int):[User]
   }
 
   type Mutation {

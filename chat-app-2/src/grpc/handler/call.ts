@@ -1,7 +1,7 @@
 import {server_publish_news} from './server_publish_news'
 
 const methods = {
-    server_publish_news:"server_publish_news"
+    server_publish_news:"server_publish_news",
 }
 
 type CallReturn = {

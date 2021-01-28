@@ -1,5 +1,7 @@
+import { getClientIp } from "@supercharge/request-ip/dist";
 import { ObjectId } from "mongodb";
 import { BlockMemberInMongo } from "../../../models/BlockMember";
+import { increaseTicketNo, ticketNo } from "../../../models/Log";
 import { Member, MemberInMongo, MemberRole } from "../../../models/Member";
 import { ResultMessage } from "../../../models/ResultMessage";
 import { RoomInMongo } from "../../../models/Room";
@@ -10,24 +12,28 @@ import {
   db,
   transactionOptions,
 } from "../../../mongo";
-import { checkRoomIdInMongoInMutation, getSlugByToken } from "../../../ulti";
+import { captureExeption } from "../../../sentry";
+import { checkRoomIdInMongoInMutation, getSlugByToken, saveLog } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
 const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
-  console.log("======ROOM JOIN=====");
-  //Get arguments
-  console.log({ args });
-  const token = ctx.req.headers.authorization;
-  const { roomId } = args;
-  const objectRoomId = new ObjectId(roomId);
-  //Check arguments
-  if (!token || !roomId) throw new Error("all arguments must be provided");
-  if (!roomId.trim()) throw new Error("roomId must be provided");
-
+  const clientIp = getClientIp(ctx.req)
+  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknow"}`
+  increaseTicketNo()
   //Start transcation
   const session = client.startSession();
-
   try {
+    //Create request log
+    saveLog(ticket, args, chat_room_join.name, "request", "received a request", clientIp)
+
+    console.log("======ROOM JOIN=====");
+    //Get arguments
+    console.log({ args });
+    const token = ctx.req.headers.authorization;
+    const { roomId } = args;
+    const objectRoomId = new ObjectId(roomId);
+    //Check arguments
+    if (!roomId.trim() || !roomId) throw new Error("CA:020");
     //Verify token and get slug
     const newMemberSlug = await getSlugByToken(token);
     let finalResult: ResultMessage = {
@@ -39,23 +45,10 @@ const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
       const RoomData: RoomInMongo | null = await checkRoomIdInMongoInMutation(objectRoomId, session);
       if (!RoomData) {
         console.log('0 document was found in the room collection')
-        await session.abortTransaction();
-        finalResult.message = `Cannot find a room with roomId=${roomId}`
-        return
+        throw new Error("CA:016")
       }
       console.log('1 document was found in the room collection')
-      //Check newMemberSlug exist
-      const checkSlug: UserInMongo | null = await db
-        .collection(collectionNames.users)
-        .findOne({ slug: newMemberSlug }, { session });
-      // console.log({ checkSlug });
-      if (!checkSlug) {
-        console.log(`0 document was found in the users collection`)
-        await session.abortTransaction();
-        finalResult.message = `${newMemberSlug} not exist in user database`;
-        return;
-      }
-      console.log(`1 document was found in the users collection`)
+
       //Check block
       const blockMemberData: BlockMemberInMongo | null = await db
         .collection(collectionNames.blockMembers)
@@ -66,9 +59,7 @@ const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
       // console.log({ blockMemberData });
       if (blockMemberData) {
         console.log(`1 document was found in the blockMembers collection`)
-        await session.abortTransaction();
-        finalResult.message = `${newMemberSlug} has been blocked`;
-        return;
+        throw new Error("CA:045")
       }
       console.log(`0 document was found in the blockMembers collection`)
       //Check member
@@ -81,9 +72,7 @@ const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
       // console.log({ memberData });
       if (memberData) {
         console.log(`1 document was found in the members collection`)
-        await session.abortTransaction();
-        finalResult.message = `${newMemberSlug} already a member`;
-        return;
+        throw new Error("CA:065")
       }
       console.log(`0 document was found in the members collection`)
       //Add new Member Doc
@@ -121,22 +110,35 @@ const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
         message: `join room success!`,
         data: dataResult,
       };
+      //Create success logs
+      saveLog(ticket, args, chat_room_join.name, "success", finalResult.message, clientIp)
     }, transactionOptions);
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");
     } else {
       console.log("The transaction was successfully committed.");
     }
-    session.endSession();
-    return finalResult;
+    return finalResult
   } catch (e) {
-    await session.abortTransaction();
-    console.log("The transaction was aborted due to : " + e);
+    //Create error logs
+    const errorResult = JSON.stringify({
+      name: e.name,
+      message: e.message,
+      stack: e.stack
+    })
+    saveLog(ticket, args, chat_room_join.name, "error", errorResult, clientIp)
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    console.log("The transaction was aborted due to " + e);
     if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
       throw new Error(e.message)
     } else {
+      captureExeption(e, { args })
       throw new Error("CA:004")
     }
+  } finally {
+    session.endSession()
   }
 };
 export { chat_room_join };

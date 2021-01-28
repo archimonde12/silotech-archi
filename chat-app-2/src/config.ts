@@ -29,6 +29,14 @@ export const redisPort=Number(process.env.REDIS_PORT)
 if (!process.env.REDIS_AUTH) throw new Error(`redis auth must be provided`)
 export const redisAuth=process.env.REDIS_AUTH
 
+//SENTRY
+if (!process.env.ACCOUNT_SENTRY_DNS) throw new Error(`account sentry must be provided`)
+if (!process.env.NODE_ENV) throw new Error(`node env must be provided`)
+export const sentryConfig = {
+    dns: process.env.ACCOUNT_SENTRY_DNS || '',
+    nodeEnv: process.env.NODE_ENV || ''
+}
+
 //Keys
 if (!process.env.SECRET_COMBINE_PAIR_KEY) throw new Error(`grpc port must be provided`)
 export const secretCombinePairKey = process.env.SECRET_COMBINE_PAIR_KEY
@@ -40,5 +48,6 @@ if (!process.env.GLOBAL_KEY) throw new Error(`global key must be provided`)
 export const GLOBAL_KEY=process.env.GLOBAL_KEY
 
 export const NEWS_ROOM="NEWS_ROOM"
+
 
 

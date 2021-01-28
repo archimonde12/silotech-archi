@@ -9,6 +9,7 @@ import {
   db,
   transactionOptions,
 } from "../../../mongo";
+import { captureExeption } from "../../../sentry";
 import { checkRoomIdInMongoInMutation, getSlugByToken } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
@@ -17,19 +18,18 @@ const chat_room_leave = async (
   args: any,
   ctx: any
 ): Promise<any> => {
-  console.log("======ROOM LEAVE=====");
-  //Get arguments
-  console.log({ args });
-  const token = ctx.req.headers.authorization;
-  const { roomId } = args;
-  const objectRoomId = new ObjectId(roomId);
-  //Check arguments
-  if (!token || !roomId) throw new Error("all arguments must be provided");
-  if (!roomId.trim()) throw new Error("roomId must be provided");
-
   //Start transcation
   const session = client.startSession();
   try {
+    console.log("======ROOM LEAVE=====");
+    //Get arguments
+    console.log({ args });
+    const token = ctx.req.headers.authorization;
+    const { roomId } = args;
+    const objectRoomId = new ObjectId(roomId);
+    //Check arguments
+    if (!token || !roomId) throw new Error("all arguments must be provided");
+    if (!roomId.trim()) throw new Error("roomId must be provided");
     //Verify token and get slug
     const memberSlug = await getSlugByToken(token);
     let finalResult: ResultMessage = {
@@ -41,23 +41,9 @@ const chat_room_leave = async (
       const RoomData: RoomInMongo | null = await checkRoomIdInMongoInMutation(objectRoomId, session);
       if (!RoomData) {
         console.log('0 document was found in the room collection')
-        await session.abortTransaction();
-        finalResult.message = `Cannot find a room with roomId=${roomId}`
-        return
+        throw new Error("CA:016")
       }
       console.log('1 document was found in the room collection')
-      //Check newMemberSlug exist
-      const checkSlug: UserInMongo | null = await db
-        .collection(collectionNames.users)
-        .findOne({ slug: memberSlug }, { session });
-      // console.log({ checkSlug });
-      if (!checkSlug) {
-        console.log(`0 document was found in the users collection`)
-        await session.abortTransaction();
-        finalResult.message = `${memberSlug} not exist in user database`;
-        return;
-      }
-      console.log(`1 document was found in the users collection`)
       //Check member
       const memberData = await db
         .collection(collectionNames.members)
@@ -68,17 +54,11 @@ const chat_room_leave = async (
       // console.log({ memberData });
       if (!memberData) {
         console.log(`1 document was found in the members collection`)
-        await session.abortTransaction();
-        finalResult.message = `${memberSlug} is not a member`;
-        return;
+        throw new Error("CA:026")
       }
       console.log(`0 document was found in the members collection`)
       //Check master
-      if (memberData.role === MemberRole.master.name) {
-        await session.abortTransaction();
-        finalResult.message = `${memberSlug} is master. Cannot leave`;
-        return;
-      }
+      if (memberData.role === MemberRole.master.name) throw new Error("CA:046")
       //Delete member document
       const { deletedCount } = await db
         .collection(collectionNames.members)
@@ -108,16 +88,20 @@ const chat_room_leave = async (
     } else {
       console.log("The transaction was successfully committed.");
     }
-    session.endSession();
-    return finalResult;
+    return finalResult
   } catch (e) {
-    await session.abortTransaction();
-    console.log("The transaction was aborted due to : " + e);
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    console.log("The transaction was aborted due to " + e);
     if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
       throw new Error(e.message)
     } else {
+      captureExeption(e, { args })
       throw new Error("CA:004")
     }
+  } finally {
+    session.endSession()
   }
 };
 export { chat_room_leave };

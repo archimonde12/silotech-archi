@@ -1,5 +1,5 @@
 type ResultMessage={
-    message:String
+    message:string
     data:any
 }
 

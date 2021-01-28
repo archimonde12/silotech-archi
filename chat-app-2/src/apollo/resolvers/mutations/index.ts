@@ -15,9 +15,11 @@ import { chat_friend_reject_request } from "./chat_friend_reject_request";
 import { chat_friend_send_request } from "./chat_friend_send_request";
 import { chat_friend_block_remove } from "./chat_friend_block_remove";
 import {chat_system_publish_news} from "./chat_system_publish_news"
+import { Test } from "../../../grpc/account-service-client";
 
 const Mutation = {
   //room
+  
   chat_room_create,
   chat_room_delete,
   chat_room_join,

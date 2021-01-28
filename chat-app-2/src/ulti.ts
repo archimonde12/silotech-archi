@@ -1,4 +1,4 @@
-import {getNewestNewsRoomMessage, newest_news_room_message} from "./apollo/resolvers/mutations/chat_system_publish_news"
+import { getNewestNewsRoomMessage, newest_news_room_message } from "./apollo/resolvers/mutations/chat_system_publish_news"
 import md5 from "md5";
 import { ClientSession, ObjectID } from "mongodb";
 import { NEWS_ROOM, secretCombinePairKey } from "./config";
@@ -8,6 +8,8 @@ import { InboxRoom, NewsRoomInMongo } from "./models/Room";
 import { User } from "./models/User";
 import { collectionNames, db } from "./mongo";
 import { existsAsync } from "./redis";
+import { Log, LogType } from "./models/Log";
+import { getClientIp } from "@supercharge/request-ip/dist";
 
 export const createInboxRoomKey = (slug1: string, slug2: string): string => {
   if (slug1 > slug2) {
@@ -80,14 +82,14 @@ export const checkUsersInDatabase = async (
 
 export const getSlugByToken = async (token: String): Promise<string> => {
   try {
-    if (!token || !token.trim()) throw new Error("CA:001");
+    if (!token || !token.trim()) throw new Error("CA:002");
     const tokenVerifyRes = await VerifyToken(token);
-    if (!tokenVerifyRes) throw new Error("CA:002");
+    if (!tokenVerifyRes) throw new Error("CA:003");
     return tokenVerifyRes.result;
-  } catch(e){
+  } catch (e) {
     throw e
   }
-  
+
 };
 
 export const createCheckFriendQuery = (senderSlug: string, reciverSlug: string) => ({
@@ -95,13 +97,13 @@ export const createCheckFriendQuery = (senderSlug: string, reciverSlug: string) 
   slug2: senderSlug <= reciverSlug ? senderSlug : reciverSlug,
 });
 
-export const ArrayRemoveNull=(_array:any[]):any[]=>{
-  return _array.filter(item=>item)
+export const ArrayRemoveNull = (_array: any[]): any[] => {
+  return _array.filter(item => item)
 }
 
-export const queryInbox = async (slug:string, limit:number) => {
+export const queryInbox = async (slug: string, limit: number) => {
   try {
-    const newestNewsRoomMessage=await getNewestNewsRoomMessage()
+    const newestNewsRoomMessage = await getNewestNewsRoomMessage()
     //Get News Room Data
     const newsRoomData: NewsRoomInMongo | null = await db.collection(collectionNames.rooms).findOne({ _id: NEWS_ROOM })
     if (!newsRoomData) { throw new Error("news room not exist. Try to create new one") }
@@ -135,8 +137,21 @@ export const queryInbox = async (slug:string, limit:number) => {
     }
     AllRoomsDetails.sort(sortFunc)
     let AllNewestMessage = ArrayRemoveNull(AllRoomsDetails.map(room => room.lastMess))
-    return [newestNewsRoomMessage,...AllNewestMessage]
+    return [newestNewsRoomMessage, ...AllNewestMessage]
   } catch (e) {
     throw e;
   }
+}
+
+export const saveLog = (_ticket: string, _args: any, _functionName: string, _type: LogType, _result: string, _clientIp: string | undefined) => {
+  const _log: Log = {
+    ticket: _ticket,
+    args: _args,
+    createdAt: new Date(),
+    function: _functionName,
+    type: _type,
+    clientIp: _clientIp ? _clientIp : 'unknow',
+    result: _result
+  }
+  db.collection(collectionNames.logs).insertOne(_log)
 }

@@ -15,7 +15,7 @@ const Subscription = {
         console.log({ payload })
         console.log({ variables })
         const token = ctx.connection.context.authorization;
-        
+
         const { roomType, roomId } = variables
         if (roomType === "global") return payload.room_listen.roomId === GLOBAL_KEY
         return (
@@ -27,28 +27,30 @@ const Subscription = {
   inbox_room_listen: {
     subscribe: withFilter(
       () => pubsub.asyncIterator([LISTEN_CHANEL]),
-      async (payload, variables) => {
+      async (payload, variables, ctx) => {
         console.log("====NEW INBOX MESSAGE====")
-        const { token, reciverSlug } = variables
+        const token = ctx.connection.context.authorization;
+        console.log({token})
+        const { receiverSlug } = variables
         const senderSlug = await getSlugByToken(token)
-        console.log({ senderSlug })
-        const roomKey = createInboxRoomKey(senderSlug, reciverSlug)
-        console.log(roomKey)
+        console.log( senderSlug,receiverSlug)
+        console.log({payload})
+        const roomKey = createInboxRoomKey(senderSlug, receiverSlug)
         return (
-          payload.inbox_room_listen.roomKey === roomKey
+          payload.inbox_room_listen.roomId === roomKey
         );
       }
     ),
   },
   userListInbox: {
-    resolve:async (payload,variables,ctx)=>{
+    resolve: async (payload, variables, ctx) => {
       const token = ctx.connection.context.authorization;
       const user = await getSlugByToken(token)
-      const result=await queryInbox(user,10)
+      const result = await queryInbox(user, 10)
       return result
     },
     subscribe: () => pubsub.asyncIterator("userListInbox")
   }
- 
+
 };
 export { Subscription };

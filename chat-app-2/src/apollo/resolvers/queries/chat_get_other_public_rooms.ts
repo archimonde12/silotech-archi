@@ -2,7 +2,9 @@ import { ObjectId } from "mongodb";
 import { RoomTypes } from "../../../models/Room";
 import { collectionNames, db } from "../../../mongo";
 import { getSlugByToken } from "../../../ulti";
-
+/**
+ * @deprecated
+ */
 const chat_get_other_public_rooms = async (root: any, args: any, ctx: any): Promise<any> => {
     console.log("======GET OTHER PUBLIC ROOMS=====");
     //Get arguments

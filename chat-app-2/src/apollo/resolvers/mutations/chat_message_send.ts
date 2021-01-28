@@ -1,16 +1,20 @@
+import { getClientIp } from "@supercharge/request-ip/dist";
 import { ClientSession, ObjectId } from "mongodb";
 import { GLOBAL_KEY } from "../../../config";
+import { increaseTicketNo, ticketNo } from "../../../models/Log";
 import { MemberInMongo } from "../../../models/Member";
-import { Message, MessageInMongo } from "../../../models/Message";
+import { Message, MessageInMongo, MessageTypes, PlainTextData } from "../../../models/Message";
 import { ResultMessage } from "../../../models/ResultMessage";
 import { InboxRoom, RoomInMongo } from "../../../models/Room";
 import { client, collectionNames, db, transactionOptions } from "../../../mongo";
+import { captureExeption } from "../../../sentry";
 import {
   checkRoomIdInMongoInMutation,
   checkUsersInDatabase,
   createCheckFriendQuery,
   createInboxRoomKey,
   getSlugByToken,
+  saveLog,
 } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
@@ -19,20 +23,28 @@ const chat_message_send = async (
   args: any,
   ctx: any
 ): Promise<any> => {
-  console.log("======MESSAGE SEND=====");
-  //Get arguments
-  const token = ctx.req.headers.authorization;
-  const { target, message } = args;
-  const { roomType, receiver } = target;
-  const { type, data } = message
-  //Check arguments
-  if (!roomType) throw new Error("CA:021");
-  if (!receiver) throw new Error("CA:022")
-  if (!type) throw new Error("CA:023")
-  if (!data) throw new Error("CA:024")
+  const clientIp = getClientIp(ctx.req)
+  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknow"}`
+  increaseTicketNo()
   //Start transcation
   const session = client.startSession();
   try {
+    //Create request log
+    saveLog(ticket, args, chat_message_send.name, "request", "received a request", clientIp)
+    console.log("======MESSAGE SEND=====");
+    //Get arguments
+    const token = ctx.req.headers.authorization;
+    const { target, message } = args;
+    const { roomType, receiver } = target;
+    const { type, data } = message
+    //Check arguments
+    if (!roomType) throw new Error("CA:021");
+    if (!receiver) throw new Error("CA:022")
+    if (!type) throw new Error("CA:023")
+    if (!data) throw new Error("CA:024")
+    if(type===MessageTypes.plaintext.name){
+      if(!data.content||!data.content.trim()) throw new Error("CA:064")
+    }
     //Verify token and get slug
     const sender = await getSlugByToken(token);
     let finalResult: ResultMessage = {
@@ -61,21 +73,35 @@ const chat_message_send = async (
           return
       }
     }, transactionOptions)
+    //Create success logs
+    saveLog(ticket, args, chat_message_send.name, "success", finalResult.message, clientIp)
     if (!transactionResults) {
       console.log("The transaction was intentionally aborted.");
     } else {
       console.log("The transaction was successfully committed.");
     }
-    session.endSession()
     return finalResult
   } catch (e) {
-    await session.abortTransaction();
-    console.log("The transaction was aborted due to : " + e);
+     //Create error logs
+     const errorResult = JSON.stringify({
+      name: e.name,
+      message: e.message,
+      stack: e.stack
+    })
+    saveLog(ticket, args, chat_message_send.name, "error", errorResult, clientIp)
+    
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    console.log("The transaction was aborted due to " + e);
     if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
       throw new Error(e.message)
     } else {
+      captureExeption(e, { args })
       throw new Error("CA:004")
     }
+  } finally {
+    session.endSession()
   }
 };
 const sendMessToGlobal = async (
@@ -120,7 +146,7 @@ const sendMessToGlobal = async (
       data: dataResult,
     };
   } catch (e) {
-   throw e
+    throw e
   }
 };
 const sendMessToPublicRoom = async (
@@ -192,7 +218,7 @@ const sendMessToPublicRoom = async (
     }
     throw new Error("CA:027")
   } catch (e) {
-   throw e
+    throw e
   }
 };
 const sendMessToUser = async (
@@ -204,6 +230,7 @@ const sendMessToUser = async (
 ) => {
   try {
     //Inbox Message
+    console.log( sender,receiver)
     const roomKey = createInboxRoomKey(sender, receiver);
 
     //Check receiver exist in database
@@ -216,7 +243,7 @@ const sendMessToUser = async (
       .findOne(checkFriendQuery, { session });
     if (!checkFriend || !checkFriend.isFriend) {
       console.log(`0 document was found in friends collection`)
-     throw new Error("CA:029")
+      throw new Error("CA:029")
     }
     console.log(`1 document was found in friends collection`)
     if (checkFriend.isBlock) throw new Error("CA:030")

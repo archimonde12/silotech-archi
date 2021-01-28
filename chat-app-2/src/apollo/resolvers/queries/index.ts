@@ -7,7 +7,9 @@ import {chat_get_all_friends} from "./chat_get_all_friends"
 import {chat_get_all_friend_requests} from "./chat_get_all_friend_requests"
 import {chat_search_users} from "./chat_search_users"
 import {chat_get_mix_rooms} from "./chat_get_mix_rooms"
+import { Test } from "../../../grpc/account-service-client"
 const Query = {
+    test:()=>Test(),
     //Search users
     chat_search_users,
     //Room

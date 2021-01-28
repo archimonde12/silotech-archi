@@ -10,34 +10,45 @@ const MessageTypes = {
     id: '1',
     name: 'shareContact'
   },
-  system:{
-    id:'2',
-    name:'system'
+  system: {
+    id: '2',
+    name: 'system'
   }
 }
 
-type MessageType="plaintext"|"shareContact"|"system"
+type MessageType = "plaintext" | "shareContact" | "system"
+
+type PlainTextData = {
+  content: string
+}
+
+type ShareContactData = {
+  userData: User
+  content: string
+}
+
+type DataType = PlainTextData | ShareContactData
 
 type Message = {
   roomId: string;
   sentAt: Date;
   type: string,
-  data: object,
+  data: DataType,
   createdBy: User;
 };
 
 type MessageInMongo = {
-  _id:ObjectID
+  _id: ObjectID
   roomId: string;
   sentAt: Date;
   type: string,
-  data: object,
+  data: DataType,
   createdBy: User;
 };
 
 
 const MessageIndexes: IndexSpecification[] = [
-  { key: { roomId: 1, createdBy: 1,sentAt:1 },unique:true},
+  { key: { roomId: 1, createdBy: 1, sentAt: 1 }, unique: true },
 ];
 
-export { Message,MessageInMongo, MessageIndexes, MessageTypes };
+export { Message, MessageInMongo, MessageIndexes, MessageTypes, MessageType, PlainTextData, ShareContactData };

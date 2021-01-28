@@ -9,6 +9,7 @@ import { BlockMemberIndexes } from "./models/BlockMember";
 import { FriendIndexes } from "./models/Friend"
 import { InitGlobalRooms } from "./initMongo/globalRoom";
 import { InitNewsRoom } from "./initMongo/newsRoom";
+import { cron_auto_delete_logs } from "./cron";
 
 let client: MongoClient;
 let db: Db;
@@ -22,7 +23,8 @@ const collectionNames = {
   members: "members",
   memberRoles: "memberRoles",
   blockMembers: "blockMembers",
-  friends: "friends"
+  friends: "friends",
+  logs: "logs"
 };
 
 const transactionOptions: TransactionOptions = {
@@ -77,6 +79,7 @@ const connectMongoDb = async () => {
       db.collection(collectionNames.rooms).createIndexes(RoomIndexes),
       db.collection(collectionNames.friends).createIndexes(FriendIndexes)
     ]);
+    // db.createCollection("logs",{capped:true,size:100000000,max:1000000})
     console.log(`🌐 Mongodb: connected`);
   } catch (err) {
     console.error(`Mongodb: disconnected`);
@@ -87,7 +90,12 @@ const connectMongoDb = async () => {
 };
 
 const initMongodb = async () => {
-  Promise.all([InitGlobalRooms(GLOBAL_KEY),InitNewsRoom()])
+  try {
+    Promise.all([InitGlobalRooms(GLOBAL_KEY), InitNewsRoom()])
+  }
+  catch (e) {
+    throw e
+  }
 };
 
 export { client, db, connectMongoDb, initMongodb, collectionNames, transactionOptions }; 

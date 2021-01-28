@@ -8,6 +8,7 @@ import {
   client,
   transactionOptions,
 } from "../../../mongo";
+import { captureExeption } from "../../../sentry";
 import { checkRoomIdInMongoInMutation, getSlugByToken } from "../../../ulti";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
@@ -16,32 +17,29 @@ const chat_room_set_role = async (
   args: any,
   ctx: any
 ): Promise<any> => {
-  console.log("=====ROOM SET ROLE=====");
-
-  //Get arguments
-  console.log({ args });
-  const token = ctx.req.headers.authorization;
-  const { roomId, memberSlug, roleSet } = args;
-  if (!token || !roomId || !memberSlug || !roleSet)
-    throw new Error("all arguments must be provided");
-  const roleToSet =
-    roleSet === "admin" ? MemberRole.admin.name : MemberRole.member.name;
-  const objectRoomId = new ObjectId(roomId);
-
-  //Check arguments
-  if (!roomId.trim()) throw new Error("roomId must be provided");
-
-  if (!memberSlug.trim()) throw new Error("member must be provided");
-
   //Start transaction
   const session = client.startSession();
-
   try {
+    console.log("=====ROOM SET ROLE=====");
+
+    //Get arguments
+    console.log({ args });
+    const token = ctx.req.headers.authorization;
+    const { roomId, memberSlug, roleSet } = args;
+    const roleToSet =
+      roleSet === "admin" ? MemberRole.admin.name : MemberRole.member.name;
+    const objectRoomId = new ObjectId(roomId);
+
+    //Check arguments
+    if (!roomId || !roomId.trim()) throw new Error("CA:020");
+
+    if (!memberSlug || !memberSlug.trim()) throw new Error("CA:057");
+
+    if (!roleSet) throw new Error
+
     //Verify token and get slug
     const master = await getSlugByToken(token);
-    if (master === memberSlug) {
-      throw new Error("cannot set role for your self");
-    }
+    if (master === memberSlug) throw new Error("CA:058")
     let finalResult: ResultMessage = {
       message: "",
       data: null,
@@ -51,17 +49,11 @@ const chat_room_set_role = async (
       const RoomData: RoomInMongo | null = await checkRoomIdInMongoInMutation(objectRoomId, session);
       if (!RoomData) {
         console.log('0 document was found in the room collection')
-        await session.abortTransaction();
-        finalResult.message = `Cannot find a room with roomId=${roomId}`
-        return
+       throw new Error("CA:016")
       }
       console.log('1 document was found in the room collection')
       //Check master
-      if (master !== RoomData.createdBy.slug) {
-        await session.abortTransaction();
-        finalResult.message = `${master} is not a owner of this room`;
-        return;
-      }
+      if (master !== RoomData.createdBy.slug) throw new Error("CA:017")
 
       //Check member
       const checkOldMemFilter = {
@@ -76,11 +68,7 @@ const chat_room_set_role = async (
         .toArray();
       // console.log({ checkOldMembers });
       console.log(`${checkOldMembers.length}/2 document(s) was/were found in the members collection`)
-      if (checkOldMembers.length !== 2) {
-        await session.abortTransaction();
-        finalResult.message = `${memberSlug} is not a member in this room`;
-        return;
-      }
+      if (checkOldMembers.length !== 2) throw new Error("CA:056")
       const memberData: MemberInMongo = checkOldMembers.filter(
         (member) => member.slug === memberSlug
       )[0];
@@ -110,16 +98,20 @@ const chat_room_set_role = async (
     } else {
       console.log("The transaction was successfully committed.");
     }
-    session.endSession();
-    return finalResult;
+    return finalResult
   } catch (e) {
-    await session.abortTransaction();
-    console.log("The transaction was aborted due to : " + e);
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    console.log("The transaction was aborted due to " + e);
     if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
       throw new Error(e.message)
     } else {
+      captureExeption(e, { args })
       throw new Error("CA:004")
     }
+  } finally {
+    session.endSession()
   }
 };
 

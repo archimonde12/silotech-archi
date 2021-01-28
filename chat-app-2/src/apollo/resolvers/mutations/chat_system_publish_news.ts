@@ -3,6 +3,7 @@ import { Message, MessageInMongo, MessageTypes } from "../../../models/Message";
 import { ResultMessage } from "../../../models/ResultMessage";
 import { client, collectionNames, db, transactionOptions } from "../../../mongo";
 import { getAsync } from "../../../redis";
+import { captureExeption } from "../../../sentry";
 import { LISTEN_CHANEL, LIST_INBOX_CHANEL, pubsub } from "../subscriptions";
 
 let newest_news_room_message: MessageInMongo | null = null
@@ -11,27 +12,29 @@ const setNewestNewsRoomMessage = (_message: MessageInMongo) => {
 }
 
 const getNewestNewsRoomMessage = async () => {
-    if (!newest_news_room_message) {
-        const key = 'chat-api.news_room.last_message'
-        const getFromRedis = await getAsync(key)
-        if (!getFromRedis) {
-            return null
+    try {
+        if (!newest_news_room_message) {
+            const key = 'chat-api.news_room.last_message'
+            const getFromRedis = await getAsync(key)
+            if (!getFromRedis) {
+                return null
+            }
+            return JSON.parse(getFromRedis)
         }
-        return JSON.parse(getFromRedis)
-    }
-    return newest_news_room_message
+        return newest_news_room_message
+    } catch (e) { throw e }
 }
 
 const chat_system_publish_news = async (root: any,
     args: any,
     ctx: any
 ): Promise<any> => {
-    console.log("====SYSTEM PUBLISH NEWS====")
-    //Get arguments
-    const { data } = args
     //Start transaction
     const session = client.startSession();
     try {
+        console.log("====SYSTEM PUBLISH NEWS====")
+        //Get arguments
+        const { data } = args
         let finalResult: ResultMessage = {
             message: '',
             data: null
@@ -73,18 +76,22 @@ const chat_system_publish_news = async (root: any,
         } else {
             console.log("The transaction was successfully committed.");
         }
-        session.endSession();
+
         pubsub.publish("userListInbox", { updateInboxList: true });
-        return finalResult;
-    }
-    catch (e) {
-        await session.abortTransaction();
-        console.log("The transaction was aborted due to : " + e);
+        return finalResult
+    } catch (e) {
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+        console.log("The transaction was aborted due to  " + e);
         if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
             throw new Error(e.message)
         } else {
+            captureExeption(e, { args })
             throw new Error("CA:004")
         }
+    } finally {
+        session.endSession()
     }
 }
 

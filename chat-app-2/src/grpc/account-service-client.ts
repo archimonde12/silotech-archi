@@ -26,7 +26,10 @@ const AccountService = (method: string, params: any) => {
     const request = { method, params: JSON.stringify(params) };
     //console.log(request)
     client.Call(request, (error, response) => {
-      if (error) return reject();
+      if (error) {
+        console.log(error)
+        return reject()
+      }
       resolve(response);
     });
   });
@@ -41,5 +44,13 @@ export async function VerifyToken(token) {
     return response;
   } catch (err) {
     console.log(`token invalid!`);
+  }
+}
+
+export async function Test() {
+  try {
+    let response = await AccountService("sdasdas", {});
+  } catch (err) {
+    console.log(err)
   }
 }
