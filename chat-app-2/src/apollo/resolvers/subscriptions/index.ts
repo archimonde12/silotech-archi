@@ -30,11 +30,11 @@ const Subscription = {
       async (payload, variables, ctx) => {
         console.log("====NEW INBOX MESSAGE====")
         const token = ctx.connection.context.authorization;
-        console.log({token})
+        console.log({ token })
         const { receiverSlug } = variables
         const senderSlug = await getSlugByToken(token)
-        console.log( senderSlug,receiverSlug)
-        console.log({payload})
+        console.log(senderSlug, receiverSlug)
+        console.log({ payload })
         const roomKey = createInboxRoomKey(senderSlug, receiverSlug)
         return (
           payload.inbox_room_listen.roomId === roomKey
