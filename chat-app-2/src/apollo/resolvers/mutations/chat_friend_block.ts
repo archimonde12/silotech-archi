@@ -18,7 +18,6 @@ const chat_friend_block = async (root: any,
   try {
     //Create request log
     saveLog(ticket, args, chat_friend_block.name, "request", "received a request", clientIp)
-
     console.log("======FRIEND BLOCK REQUEST=====");
     //Get arguments
     console.log({ args });

@@ -1,11 +1,18 @@
+import { getClientIp } from "@supercharge/request-ip/dist";
 import { ObjectId } from "mongodb";
 import { GLOBAL_KEY } from "../../../config";
+import { increaseTicketNo, ticketNo } from "../../../models/Log";
 import { collectionNames, db } from "../../../mongo";
 import { captureExeption } from "../../../sentry";
-import { createInboxRoomKey, getSlugByToken } from "../../../ulti";
+import { createInboxRoomKey, getSlugByToken, saveLog } from "../../../ulti";
 
 const chat_get_messages_in_room = async (root: any, args: any, ctx: any): Promise<any> => {
+  const clientIp = getClientIp(ctx.req)
+  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknow"}`
+  increaseTicketNo()
   try {
+    //Create request log
+    saveLog(ticket, args, chat_get_messages_in_room.name, "request", "received a request", clientIp)
     console.log("======GET MESSAGES=====");
     //Get arguments
     console.log({ args });
@@ -24,16 +31,29 @@ const chat_get_messages_in_room = async (root: any, args: any, ctx: any): Promis
     switch (roomType) {
       case 'global':
         result = await getMessInGlobal(pageSize, page)
+        //Create success logs
+        saveLog(ticket, args, chat_get_messages_in_room.name, "success", "successful", clientIp)
         return result
       case 'publicRoom':
         result = await getMessInPublicRoom(receiver, pageSize, page)
+        //Create success logs
+        saveLog(ticket, args, chat_get_messages_in_room.name, "success", "successful", clientIp)
         return result
       case 'inbox':
         result = await getMessInInboxRoom(sender, receiver, pageSize, page)
+        //Create success logs
+        saveLog(ticket, args, chat_get_messages_in_room.name, "success", "successful", clientIp)
         return result
       default: throw new Error('CA:021')
     }
   } catch (e) {
+    //Create error logs
+    const errorResult = JSON.stringify({
+      name: e.name,
+      message: e.message,
+      stack: e.stack
+    })
+    saveLog(ticket, args, chat_get_messages_in_room.name, "error", errorResult, clientIp)
     console.log(e)
     if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
       throw new Error(e.message)

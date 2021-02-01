@@ -2,10 +2,12 @@ import { typeDefs } from "./typeDefs/schema";
 import { resolvers } from "./resolvers";
 import { ApolloServer } from "apollo-server";
 import { graphqlPort } from "../config"
-import { getSlugByToken } from "../ulti";
+import { getSlugByToken, saveLog } from "../ulti";
+import { getClientIp } from "@supercharge/request-ip/dist";
+import { increaseTicketNo, ticketNo } from "../models/Log";
 
-interface Param{
-  authorization:string
+interface Param {
+  authorization: string
 }
 
 const initApollo = async () => {
@@ -15,13 +17,26 @@ const initApollo = async () => {
       resolvers,
       subscriptions: {
         onConnect: async (connectionParams, webSocket) => {
+          const ticket = `${new Date().getTime()}.${ticketNo}.subscriptions`
+          increaseTicketNo()
           try {
-            const params=connectionParams as Param
-            const token = params.authorization 
+            //Create request log
+            saveLog(ticket, {}, "subscriptions", "request", "received a request", "unknow")
+            const params = connectionParams as Param
+            const token = params.authorization
             if (!token) throw new Error("CA:002")
             await getSlugByToken(token);
+            //Create request log
+            saveLog(ticket, {}, "subscriptions", "success", "subscriptions success", "unknow")
           }
           catch (e) {
+            //Create error logs
+            const errorResult = JSON.stringify({
+              name: e.name,
+              message: e.message,
+              stack: e.stack
+            })
+            saveLog(ticket, {}, "subscriptions", "error", errorResult, "unknow")
             throw new Error("CA:003")
           }
         },

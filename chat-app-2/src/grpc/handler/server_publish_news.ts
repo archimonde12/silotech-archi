@@ -17,7 +17,6 @@ const server_publish_news = async (params: { request: any }): Promise<CallReturn
         const data = JSON.parse(params.request.params).data
         console.log({ data })
         //Check data type
-        //
         let finalResult: CallReturn = {
             result: null,
             error: null

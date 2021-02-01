@@ -79,7 +79,13 @@ const connectMongoDb = async () => {
       db.collection(collectionNames.rooms).createIndexes(RoomIndexes),
       db.collection(collectionNames.friends).createIndexes(FriendIndexes)
     ]);
-    // db.createCollection("logs",{capped:true,size:100000000,max:1000000})
+    const allCollections = await db.listCollections().toArray()
+    const allCollectionsName: string[] = allCollections.map(collection => collection.name)
+    // Create logs collection
+    if (!allCollectionsName.includes(collectionNames.logs)) {
+      db.createCollection("logs", { capped: true, size: 100000000, max: 1000000 })
+    }
+
     console.log(`🌐 Mongodb: connected`);
   } catch (err) {
     console.error(`Mongodb: disconnected`);

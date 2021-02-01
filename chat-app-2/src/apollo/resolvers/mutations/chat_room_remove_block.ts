@@ -1,4 +1,6 @@
+import { getClientIp } from "@supercharge/request-ip/dist";
 import { ObjectId } from "mongodb";
+import { increaseTicketNo, ticketNo } from "../../../models/Log";
 import { MemberRole } from "../../../models/Member";
 import { ResultMessage } from "../../../models/ResultMessage";
 import { RoomInMongo } from "../../../models/Room";
@@ -9,16 +11,21 @@ import {
   transactionOptions,
 } from "../../../mongo";
 import { captureExeption } from "../../../sentry";
-import { checkRoomIdInMongoInMutation, getSlugByToken } from "../../../ulti";
+import { checkRoomIdInMongoInMutation, getSlugByToken, saveLog } from "../../../ulti";
 
 const chat_room_remove_block = async (
   root: any,
   args: any,
   ctx: any
 ): Promise<any> => {
+  const clientIp = getClientIp(ctx.req)
+  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknow"}`
+  increaseTicketNo()
   //Start transcation
   const session = client.startSession();
   try {
+    //Create request log
+    saveLog(ticket, args, chat_room_remove_block.name, "request", "received a request", clientIp)
     console.log("======ROOM REMOVE BLOCK=====");
     //Get arguments
     console.log({ args });
@@ -78,8 +85,17 @@ const chat_room_remove_block = async (
     } else {
       console.log("The transaction was successfully committed.");
     }
+    //Create success logs
+    saveLog(ticket, args, chat_room_remove_block.name, "success", finalResult.message, clientIp)
     return finalResult
   } catch (e) {
+    //Create error logs
+    const errorResult = JSON.stringify({
+      name: e.name,
+      message: e.message,
+      stack: e.stack
+    })
+    saveLog(ticket, args, chat_room_remove_block.name, "error", errorResult, clientIp)
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
