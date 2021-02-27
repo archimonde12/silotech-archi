@@ -2,17 +2,16 @@ import { getClientIp } from "@supercharge/request-ip/dist";
 import { ObjectId } from "mongodb";
 import { increaseTicketNo, ticketNo } from "../../../models/Log";
 import { collectionNames, db } from "../../../mongo";
-import { captureExeption } from "../../../sentry";
-import { saveLog } from "../../../ulti";
+import { ErrorResolve, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
 const chat_get_room_details = async (root: any, args: any, ctx: any): Promise<any> => {
     const clientIp = getClientIp(ctx.req)
-    const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknow"}`
+    const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
     increaseTicketNo()
 
     try {
         //Create request log
-        saveLog(ticket, args, chat_get_room_details.name, "request", "received a request", clientIp)
+        saveRequestLog(ticket, args, chat_get_room_details.name,  clientIp)
         console.log("======GET ROOM DETAILS=====");
         //Get arguments
         console.log({ args });
@@ -26,7 +25,7 @@ const chat_get_room_details = async (root: any, args: any, ctx: any): Promise<an
         console.log({ RoomData });
         if (!RoomData) throw new Error("CA:016")
         //Create success logs
-        saveLog(ticket, args, chat_get_room_details.name, "success", "successful", clientIp)
+        saveSuccessLog(ticket, args, chat_get_room_details.name,  "successful", clientIp)
         return RoomData
     } catch (e) {
         //Create error logs
@@ -35,14 +34,8 @@ const chat_get_room_details = async (root: any, args: any, ctx: any): Promise<an
             message: e.message,
             stack: e.stack
         })
-        saveLog(ticket, args, chat_get_room_details.name, "error", errorResult, clientIp)
-        console.log(e)
-        if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
-            throw new Error(e.message)
-        } else {
-            captureExeption(e, { args })
-            throw new Error("CA:004")
-        }
+        saveErrorLog(ticket, args, chat_get_room_details.name, errorResult, clientIp)
+        ErrorResolve(e, args, chat_get_room_details.name)
     }
 }
 export { chat_get_room_details }

@@ -3,18 +3,18 @@ import { ObjectId } from "mongodb";
 import { increaseTicketNo, ticketNo } from "../../../models/Log";
 import { RoomTypes } from "../../../models/Room";
 import { collectionNames, db } from "../../../mongo";
-import { captureExeption } from "../../../sentry";
-import { getSlugByToken, saveLog } from "../../../ulti";
+import { CaptureException } from "../../../sentry";
+import { ErrorResolve, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 /**
  * @deprecated
  */
 const chat_get_other_public_rooms = async (root: any, args: any, ctx: any): Promise<any> => {
     const clientIp = getClientIp(ctx.req)
-    const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknow"}`
+    const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
     increaseTicketNo()
     try {
         //Create request log
-        saveLog(ticket, args, chat_get_other_public_rooms.name, "request", "received a request", clientIp)
+        saveRequestLog(ticket, args, chat_get_other_public_rooms.name, clientIp)
         console.log("======GET OTHER PUBLIC ROOMS=====");
         //Get arguments
         console.log({ args });
@@ -51,15 +51,15 @@ const chat_get_other_public_rooms = async (root: any, args: any, ctx: any): Prom
         //Get all public room
         const allPubLicRooms = await db.collection(collectionNames.rooms).find({ type: RoomTypes.public }).toArray()
         console.log({ allPubLicRooms })
-        const otherPublicRoooms = allPubLicRooms.filter(publicroom => !slugPublicRoomIds.includes(publicroom._id.toString()))
-        console.log({ otherPublicRoooms })
+        const otherPublicRooms = allPubLicRooms.filter(publicRoom => !slugPublicRoomIds.includes(publicRoom._id.toString()))
+        console.log({ otherPublicRooms })
         const sortFunc = (a, b) => {
             return b.updatedAt - a.updatedAt
         }
-        otherPublicRoooms.sort(sortFunc)
+        otherPublicRooms.sort(sortFunc)
         //Create success logs
-        saveLog(ticket, args, chat_get_other_public_rooms.name, "success", "successful", clientIp)
-        return otherPublicRoooms
+        saveSuccessLog(ticket, args, chat_get_other_public_rooms.name, "successful", clientIp)
+        return otherPublicRooms
     } catch (e) {
         //Create error logs
         const errorResult = JSON.stringify({
@@ -67,14 +67,8 @@ const chat_get_other_public_rooms = async (root: any, args: any, ctx: any): Prom
             message: e.message,
             stack: e.stack
         })
-        saveLog(ticket, args, chat_get_other_public_rooms.name, "error", errorResult, clientIp)
-        console.log(e)
-        if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
-            throw new Error(e.message)
-        } else {
-            captureExeption(e, { args })
-            throw new Error("CA:004")
-        }
+        saveErrorLog(ticket, args, chat_get_other_public_rooms.name, errorResult, clientIp)
+        ErrorResolve(e, args, chat_get_other_public_rooms.name)
     }
 }
 export { chat_get_other_public_rooms }

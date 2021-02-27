@@ -6,8 +6,8 @@ import { MemberRole } from "../../../models/Member";
 import { ResultMessage } from "../../../models/ResultMessage";
 import { RoomInMongo } from "../../../models/Room";
 import { client, collectionNames, db, transactionOptions } from "../../../mongo";
-import { captureExeption } from "../../../sentry";
-import { checkRoomIdInMongoInMutation, checkUsersInDatabase, getSlugByToken, saveLog } from "../../../ulti";
+import { CaptureException } from "../../../sentry";
+import { checkRoomIdInMongoInMutation, checkUsersInDatabase, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
 const chat_room_block = async (
@@ -16,13 +16,13 @@ const chat_room_block = async (
   ctx: any
 ): Promise<any> => {
   const clientIp = getClientIp(ctx.req)
-  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknow"}`
+  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
   increaseTicketNo()
-  //Start transcation
+  //Start transaction
   const session = client.startSession();
   try {
     //Create request log
-    saveLog(ticket, args, chat_room_block.name, "request", "received a request", clientIp)
+    saveRequestLog(ticket, args, chat_room_block.name, clientIp)
 
     console.log("======ROOM BLOCK=====");
     //Get arguments
@@ -34,7 +34,7 @@ const chat_room_block = async (
 
     //Check arguments
     if (!roomId || !roomId.trim()) throw new Error("CA:020")
-    if (!blockMemberSlugs || blockMemberSlugs.length===0) throw new Error("CA:031");
+    if (!blockMemberSlugs || blockMemberSlugs.length === 0) throw new Error("CA:031");
 
     //Verify token
     const admin = await getSlugByToken(token);
@@ -44,7 +44,7 @@ const chat_room_block = async (
       message: '',
       data: null
     }
-    const transactionResults: any = await session.withTransaction(async () => {
+    await session.withTransaction(async () => {
       //Check roomId exist
       const RoomData: RoomInMongo | null = await checkRoomIdInMongoInMutation(objectRoomId, session);
       if (!RoomData) {
@@ -124,22 +124,18 @@ const chat_room_block = async (
       pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
       finalResult.message = `${totalMemberBlock} member(s) has been block!`
       //Create success logs
-      saveLog(ticket, args, chat_room_block.name, "success", finalResult.message, clientIp)
+      saveSuccessLog(ticket, args, chat_room_block.name, finalResult.message, clientIp)
     }, transactionOptions)
-    if (!transactionResults) {
-      console.log("The transaction was intentionally aborted.");
-    } else {
-      console.log("The transaction was successfully committed.");
-    }
+
     return finalResult
   } catch (e) {
-     //Create error logs
-     const errorResult = JSON.stringify({
+    //Create error logs
+    const errorResult = JSON.stringify({
       name: e.name,
       message: e.message,
       stack: e.stack
     })
-    saveLog(ticket, args, chat_room_block.name, "error", errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_room_block.name, errorResult, clientIp)
 
 
     if (session.inTransaction()) {
@@ -149,7 +145,7 @@ const chat_room_block = async (
     if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
       throw new Error(e.message)
     } else {
-      captureExeption(e, { args })
+      CaptureException(e, { args })
       throw new Error("CA:004")
     }
   } finally {

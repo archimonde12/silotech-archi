@@ -2,7 +2,7 @@ import { typeDefs } from "./typeDefs/schema";
 import { resolvers } from "./resolvers";
 import { ApolloServer } from "apollo-server";
 import { graphqlPort } from "../config"
-import { getSlugByToken, saveLog } from "../ulti";
+import { getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../utils";
 import { getClientIp } from "@supercharge/request-ip/dist";
 import { increaseTicketNo, ticketNo } from "../models/Log";
 
@@ -21,13 +21,13 @@ const initApollo = async () => {
           increaseTicketNo()
           try {
             //Create request log
-            saveLog(ticket, {}, "subscriptions", "request", "received a request", "unknow")
+            saveRequestLog(ticket, {}, "subscriptions", "unknown")
             const params = connectionParams as Param
             const token = params.authorization
             if (!token) throw new Error("CA:002")
             await getSlugByToken(token);
-            //Create request log
-            saveLog(ticket, {}, "subscriptions", "success", "subscriptions success", "unknow")
+            //Create success log
+            saveSuccessLog(ticket, {}, "subscriptions", "subscriptions success", "unknown")
           }
           catch (e) {
             //Create error logs
@@ -36,7 +36,7 @@ const initApollo = async () => {
               message: e.message,
               stack: e.stack
             })
-            saveLog(ticket, {}, "subscriptions", "error", errorResult, "unknow")
+            saveErrorLog(ticket, {}, "subscriptions", errorResult, "unknown")
             throw new Error("CA:003")
           }
         },

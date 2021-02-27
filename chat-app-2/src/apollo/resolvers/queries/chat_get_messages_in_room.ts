@@ -3,16 +3,16 @@ import { ObjectId } from "mongodb";
 import { GLOBAL_KEY } from "../../../config";
 import { increaseTicketNo, ticketNo } from "../../../models/Log";
 import { collectionNames, db } from "../../../mongo";
-import { captureExeption } from "../../../sentry";
-import { createInboxRoomKey, getSlugByToken, saveLog } from "../../../ulti";
+import { CaptureException } from "../../../sentry";
+import { createInboxRoomKey, ErrorResolve, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
 const chat_get_messages_in_room = async (root: any, args: any, ctx: any): Promise<any> => {
   const clientIp = getClientIp(ctx.req)
-  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknow"}`
+  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
   increaseTicketNo()
   try {
     //Create request log
-    saveLog(ticket, args, chat_get_messages_in_room.name, "request", "received a request", clientIp)
+    saveRequestLog(ticket, args, chat_get_messages_in_room.name, clientIp)
     console.log("======GET MESSAGES=====");
     //Get arguments
     console.log({ args });
@@ -31,21 +31,18 @@ const chat_get_messages_in_room = async (root: any, args: any, ctx: any): Promis
     switch (roomType) {
       case 'global':
         result = await getMessInGlobal(pageSize, page)
-        //Create success logs
-        saveLog(ticket, args, chat_get_messages_in_room.name, "success", "successful", clientIp)
-        return result
+        break;
       case 'publicRoom':
         result = await getMessInPublicRoom(receiver, pageSize, page)
-        //Create success logs
-        saveLog(ticket, args, chat_get_messages_in_room.name, "success", "successful", clientIp)
-        return result
+        break;
       case 'inbox':
         result = await getMessInInboxRoom(sender, receiver, pageSize, page)
-        //Create success logs
-        saveLog(ticket, args, chat_get_messages_in_room.name, "success", "successful", clientIp)
-        return result
+        break;
       default: throw new Error('CA:021')
     }
+    //Create success logs
+    saveSuccessLog(ticket, args, chat_get_messages_in_room.name, "successful", clientIp)
+    return result
   } catch (e) {
     //Create error logs
     const errorResult = JSON.stringify({
@@ -53,14 +50,8 @@ const chat_get_messages_in_room = async (root: any, args: any, ctx: any): Promis
       message: e.message,
       stack: e.stack
     })
-    saveLog(ticket, args, chat_get_messages_in_room.name, "error", errorResult, clientIp)
-    console.log(e)
-    if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
-      throw new Error(e.message)
-    } else {
-      captureExeption(e, { args })
-      throw new Error("CA:004")
-    }
+    saveErrorLog(ticket, args, chat_get_messages_in_room.name, errorResult, clientIp)
+    ErrorResolve(e, args, chat_get_messages_in_room.name)
   }
 };
 export { chat_get_messages_in_room };

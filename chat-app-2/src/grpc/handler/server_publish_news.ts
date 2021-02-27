@@ -21,7 +21,7 @@ const server_publish_news = async (params: { request: any }): Promise<CallReturn
             result: null,
             error: null
         }
-        const transactionResults: any = await session.withTransaction(async () => {
+         await session.withTransaction(async () => {
             //Prepare new message
             const now = new Date()
             const newMessage: Message = {
@@ -55,11 +55,6 @@ const server_publish_news = async (params: { request: any }): Promise<CallReturn
             console.log(`${updateRoomRes.modifiedCount} doc(s) was/were updated to rooms collection`)
             finalResult.result = `add new message to news room success`
         }, transactionOptions)
-        if (!transactionResults) {
-            console.log("The transaction was intentionally aborted.");
-        } else {
-            console.log("The transaction was successfully committed.");
-        }
         session.endSession();
         pubsub.publish("userListInbox", { updateInboxList: true });
         return finalResult;

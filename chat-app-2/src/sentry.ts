@@ -8,11 +8,11 @@ Sentry.init({ dsn: sentryConfig.dns, serverName: `chat-api`, environment: sentry
  * @param error error unexpected
  * @param data can be any thing
  */
-const captureExeption = (error: any, data: any) => {
+const CaptureException = (error: any, data: any) => {
     Sentry.addBreadcrumb({ data })
     Sentry.captureException(error)
 }
 
-export { Sentry,captureExeption}
+export { Sentry,CaptureException}
 
 

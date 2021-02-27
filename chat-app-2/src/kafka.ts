@@ -2,7 +2,7 @@ import { Kafka } from "kafkajs";
 import { kafkaBroker, kafkaClientId } from "./config";
 import { collectionNames, db } from "./mongo";
 import { setAsync } from "./redis";
-import { checkUsersInDatabase } from "./ulti";
+import { checkUsersInDatabase } from "./utils";
 
 const brickKafka = new Kafka({
     clientId: kafkaClientId, //coinKafkaConfig.clientId,

@@ -46,11 +46,3 @@ export async function VerifyToken(token) {
     console.log(`token invalid!`);
   }
 }
-
-export async function Test() {
-  try {
-    let response = await AccountService("sdasdas", {});
-  } catch (err) {
-    console.log(err)
-  }
-}

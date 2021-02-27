@@ -10,8 +10,8 @@ import {
   db,
   transactionOptions,
 } from "../../../mongo";
-import { captureExeption } from "../../../sentry";
-import { checkRoomIdInMongoInMutation, getSlugByToken, saveLog } from "../../../ulti";
+import { CaptureException } from "../../../sentry";
+import { checkRoomIdInMongoInMutation, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
 const chat_room_delete = async (
   root: any,
@@ -19,14 +19,14 @@ const chat_room_delete = async (
   ctx: any
 ): Promise<any> => {
   const clientIp = getClientIp(ctx.req)
-  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknow"}`
+  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
   increaseTicketNo()
 
-  //Start transcation
+  //Start transaction
   const session = client.startSession();
   try {
     //Create request log
-    saveLog(ticket, args, chat_room_delete.name, "request", "received a request", clientIp)
+    saveRequestLog(ticket, args, chat_room_delete.name, clientIp)
 
     console.log("======ROOM DELETE=====");
     //Get arguments
@@ -37,12 +37,12 @@ const chat_room_delete = async (
     //Check arguments
     if (!roomId.trim() || !roomId) throw new Error("CA:020");
     //Verify token and get slug
-    const createrSlug = await getSlugByToken(token);
+    const masterSlug = await getSlugByToken(token);
     let finalResult: ResultMessage = {
       message: "",
       data: null,
     };
-    const transactionResults: any = await session.withTransaction(async () => {
+    await session.withTransaction(async () => {
       //Check roomId exist
       const RoomData: RoomInMongo | null = await checkRoomIdInMongoInMutation(objectRoomId, session);
       if (!RoomData) {
@@ -51,10 +51,10 @@ const chat_room_delete = async (
       }
       console.log('1 document was found in the room collection')
       //Check room type
-      if (RoomData.type === `global` && createrSlug !== ADMIN_KEY) throw new Error("CA:044")
+      if (RoomData.type === `global` && masterSlug !== ADMIN_KEY) throw new Error("CA:044")
       //Check master
-      if (createrSlug !== RoomData.createdBy.slug) throw new Error("CA:017")
-      console.log(`${createrSlug} is the master of this room`)
+      if (masterSlug !== RoomData.createdBy.slug) throw new Error("CA:017")
+      console.log(`${masterSlug} is the master of this room`)
       //Delete the room
       const deleteRoomRes = await db
         .collection(collectionNames.rooms)
@@ -72,13 +72,9 @@ const chat_room_delete = async (
       console.log(`${deleteMessagesRes.deletedCount} document was deleted in the messages collection`)
       finalResult.message = `delete this room success!`;
       //Create success logs
-      saveLog(ticket, args, chat_room_delete.name, "success", finalResult.message, clientIp)
+      saveSuccessLog(ticket, args, chat_room_delete.name, finalResult.message, clientIp)
     }, transactionOptions);
-    if (!transactionResults) {
-      console.log("The transaction was intentionally aborted.");
-    } else {
-      console.log("The transaction was successfully committed.");
-    }
+
     return finalResult
   } catch (e) {
     //Create error logs
@@ -87,7 +83,7 @@ const chat_room_delete = async (
       message: e.message,
       stack: e.stack
     })
-    saveLog(ticket, args, chat_room_delete.name, "error", errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_room_delete.name, errorResult, clientIp)
 
     if (session.inTransaction()) {
       await session.abortTransaction();
@@ -96,7 +92,7 @@ const chat_room_delete = async (
     if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
       throw new Error(e.message)
     } else {
-      captureExeption(e, { args })
+      CaptureException(e, { args })
       throw new Error("CA:004")
     }
   } finally {

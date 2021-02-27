@@ -11,8 +11,8 @@ import {
   db,
   transactionOptions,
 } from "../../../mongo";
-import { captureExeption } from "../../../sentry";
-import { checkRoomIdInMongoInMutation, getSlugByToken, saveLog } from "../../../ulti";
+import { CaptureException } from "../../../sentry";
+import { checkRoomIdInMongoInMutation, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 import { chat_room_set_role } from "./chat_room_set_role";
 
@@ -22,13 +22,13 @@ const chat_room_leave = async (
   ctx: any
 ): Promise<any> => {
   const clientIp = getClientIp(ctx.req)
-  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknow"}`
+  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
   increaseTicketNo()
-  //Start transcation
+  //Start transaction
   const session = client.startSession();
   try {
     //Create request log
-    saveLog(ticket, args, chat_room_leave.name, "request", "received a request", clientIp)
+    saveRequestLog(ticket, args, chat_room_leave.name, clientIp)
     console.log("======ROOM LEAVE=====");
     //Get arguments
     console.log({ args });
@@ -44,7 +44,7 @@ const chat_room_leave = async (
       message: "",
       data: null,
     };
-    const transactionResults: any = await session.withTransaction(async () => {
+    await session.withTransaction(async () => {
       //Check roomId exist
       const RoomData: RoomInMongo | null = await checkRoomIdInMongoInMutation(objectRoomId, session);
       if (!RoomData) {
@@ -91,13 +91,9 @@ const chat_room_leave = async (
         data: memberData,
       };
     }, transactionOptions);
-    if (!transactionResults) {
-      console.log("The transaction was intentionally aborted.");
-    } else {
-      console.log("The transaction was successfully committed.");
-    }
+
     //Create success logs
-    saveLog(ticket, args, chat_room_leave.name, "success", finalResult.message, clientIp)
+    saveSuccessLog(ticket, args, chat_room_leave.name, finalResult.message, clientIp)
     return finalResult
   } catch (e) {
     //Create error logs
@@ -106,7 +102,7 @@ const chat_room_leave = async (
       message: e.message,
       stack: e.stack
     })
-    saveLog(ticket, args, chat_room_leave.name, "error", errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_room_leave.name, errorResult, clientIp)
 
     if (session.inTransaction()) {
       await session.abortTransaction();
@@ -115,7 +111,7 @@ const chat_room_leave = async (
     if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
       throw new Error(e.message)
     } else {
-      captureExeption(e, { args })
+      CaptureException(e, { args })
       throw new Error("CA:004")
     }
   } finally {

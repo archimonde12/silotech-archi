@@ -4,17 +4,17 @@ import { increaseTicketNo, ticketNo } from "../../../models/Log";
 import { MemberInMongo } from "../../../models/Member";
 import { InboxRoom, RoomTypes } from "../../../models/Room";
 import { collectionNames, db } from "../../../mongo";
-import { captureExeption } from "../../../sentry";
-import { getSlugByToken, saveLog } from "../../../ulti";
+import { CaptureException } from "../../../sentry";
+import { ErrorResolve, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
 const chat_get_mix_rooms = async (root: any, args: any, ctx: any) => {
     const clientIp = getClientIp(ctx.req)
-    const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknow"}`
+    const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
     increaseTicketNo()
 
     try {
         //Create request log
-        saveLog(ticket, args, chat_get_mix_rooms.name, "request", "received a request", clientIp)
+        saveRequestLog(ticket, args, chat_get_mix_rooms.name,  clientIp)
         console.log("=====GET MIX ROOMS=====")
         //Get arguments
         console.log({ args });
@@ -53,7 +53,7 @@ const chat_get_mix_rooms = async (root: any, args: any, ctx: any) => {
         }
         allRooms.sort(sortFunc)
         //Create success logs
-        saveLog(ticket, args, chat_get_mix_rooms.name, "success", "successful", clientIp)
+        saveSuccessLog(ticket, args, chat_get_mix_rooms.name,  "successful", clientIp)
         return allRooms.slice(0, pageSize)
     } catch (e) {
         //Create error logs
@@ -62,14 +62,8 @@ const chat_get_mix_rooms = async (root: any, args: any, ctx: any) => {
             message: e.message,
             stack: e.stack
         })
-        saveLog(ticket, args, chat_get_mix_rooms.name, "error", errorResult, clientIp)
-        console.log(e)
-        if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
-            throw new Error(e.message)
-        } else {
-            captureExeption(e, { args })
-            throw new Error("CA:004")
-        }
+        saveErrorLog(ticket, args, chat_get_mix_rooms.name, errorResult, clientIp)
+        ErrorResolve(e, args, chat_get_mix_rooms.name)
     }
 }
 

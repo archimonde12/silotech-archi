@@ -2,7 +2,7 @@ import { PubSub, withFilter } from "apollo-server";
 import { ObjectId } from "mongodb";
 import { GLOBAL_KEY } from "../../../config";
 
-import { createInboxRoomKey, getSlugByToken, queryInbox } from "../../../ulti";
+import { createInboxRoomKey, getSlugByToken, queryInbox } from "../../../utils";
 export const pubsub = new PubSub();
 export const LISTEN_CHANEL = "MESSAGE_SEND";
 export const LIST_INBOX_CHANEL = "LIST_INBOX"

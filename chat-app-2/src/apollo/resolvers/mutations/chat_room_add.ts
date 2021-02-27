@@ -5,19 +5,19 @@ import { Member, MemberRole } from "../../../models/Member";
 import { ResultMessage } from "../../../models/ResultMessage";
 import { RoomInMongo } from "../../../models/Room";
 import { client, collectionNames, db, transactionOptions } from "../../../mongo";
-import { captureExeption } from "../../../sentry";
-import { checkRoomIdInMongoInMutation, checkUsersInDatabase, getSlugByToken, saveLog } from "../../../ulti";
+import { CaptureException } from "../../../sentry";
+import { checkRoomIdInMongoInMutation, checkUsersInDatabase, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
 const chat_room_add = async (root: any, args: any, ctx: any): Promise<any> => {
   const clientIp = getClientIp(ctx.req)
-  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknow"}`
+  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
   increaseTicketNo()
-  //Start transcation
+  //Start transaction
   const session = client.startSession();
   try {
     //Create request log
-    saveLog(ticket, args, chat_room_add.name, "request", "received a request", clientIp)
+    saveRequestLog(ticket, args, chat_room_add.name, clientIp)
     console.log("======ROOM ADD=====");
     //Get arguments
     console.log({ args });
@@ -38,7 +38,7 @@ const chat_room_add = async (root: any, args: any, ctx: any): Promise<any> => {
     }
     if (addMemberSlugs.includes(admin)) throw new Error("CA:038");
 
-    const transactionResults: any = await session.withTransaction(async () => {
+     await session.withTransaction(async () => {
       //Check roomId exist
       const RoomData: RoomInMongo | null = await checkRoomIdInMongoInMutation(objectRoomId, session);
       if (!RoomData) {
@@ -120,12 +120,8 @@ const chat_room_add = async (root: any, args: any, ctx: any): Promise<any> => {
       };
     }, transactionOptions)
     //Create success logs
-    saveLog(ticket, args, chat_room_add.name, "success", finalResult.message, clientIp)
-    if (!transactionResults) {
-      console.log("The transaction was intentionally aborted.");
-    } else {
-      console.log("The transaction was successfully committed.");
-    }
+    saveSuccessLog(ticket, args, chat_room_add.name, finalResult.message, clientIp)
+   
     return finalResult
   } catch (e) {
       //Create error logs
@@ -134,7 +130,7 @@ const chat_room_add = async (root: any, args: any, ctx: any): Promise<any> => {
         message: e.message,
         stack: e.stack
       })
-      saveLog(ticket, args, chat_room_add.name, "error", errorResult, clientIp)
+      saveErrorLog(ticket, args, chat_room_add.name, errorResult, clientIp)
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
@@ -143,7 +139,7 @@ const chat_room_add = async (root: any, args: any, ctx: any): Promise<any> => {
     if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
       throw new Error(e.message)
     } else {
-      captureExeption(e, { args })
+      CaptureException(e, { args })
       throw new Error("CA:004")
     }
   } finally {

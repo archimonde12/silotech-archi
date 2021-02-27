@@ -7,15 +7,17 @@ import { Message, MessageInMongo, MessageTypes, PlainTextData } from "../../../m
 import { ResultMessage } from "../../../models/ResultMessage";
 import { InboxRoom, RoomInMongo } from "../../../models/Room";
 import { client, collectionNames, db, transactionOptions } from "../../../mongo";
-import { captureExeption } from "../../../sentry";
+import { CaptureException } from "../../../sentry";
 import {
   checkRoomIdInMongoInMutation,
   checkUsersInDatabase,
   createCheckFriendQuery,
   createInboxRoomKey,
   getSlugByToken,
-  saveLog,
-} from "../../../ulti";
+  saveErrorLog,
+  saveRequestLog,
+  saveSuccessLog,
+} from "../../../utils";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
 const chat_message_send = async (
@@ -24,13 +26,13 @@ const chat_message_send = async (
   ctx: any
 ): Promise<any> => {
   const clientIp = getClientIp(ctx.req)
-  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknow"}`
+  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
   increaseTicketNo()
-  //Start transcation
+  //Start transaction
   const session = client.startSession();
   try {
     //Create request log
-    saveLog(ticket, args, chat_message_send.name, "request", "received a request", clientIp)
+    saveRequestLog(ticket, args, chat_message_send.name,  clientIp)
     console.log("======MESSAGE SEND=====");
     //Get arguments
     const token = ctx.req.headers.authorization;
@@ -51,7 +53,7 @@ const chat_message_send = async (
       message: '',
       data: null
     }
-    const transactionResults: any = await session.withTransaction(async () => {
+     await session.withTransaction(async () => {
       switch (roomType) {
         case "global":
           finalResult = await sendMessToGlobal(sender, type, data, session);
@@ -74,12 +76,8 @@ const chat_message_send = async (
       }
     }, transactionOptions)
     //Create success logs
-    saveLog(ticket, args, chat_message_send.name, "success", finalResult.message, clientIp)
-    if (!transactionResults) {
-      console.log("The transaction was intentionally aborted.");
-    } else {
-      console.log("The transaction was successfully committed.");
-    }
+    saveSuccessLog(ticket, args, chat_message_send.name,  finalResult.message, clientIp)
+   
     return finalResult
   } catch (e) {
      //Create error logs
@@ -88,7 +86,7 @@ const chat_message_send = async (
       message: e.message,
       stack: e.stack
     })
-    saveLog(ticket, args, chat_message_send.name, "error", errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_message_send.name, errorResult, clientIp)
     
     if (session.inTransaction()) {
       await session.abortTransaction();
@@ -97,7 +95,7 @@ const chat_message_send = async (
     if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
       throw new Error(e.message)
     } else {
-      captureExeption(e, { args })
+      CaptureException(e, { args })
       throw new Error("CA:004")
     }
   } finally {

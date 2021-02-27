@@ -1,4 +1,4 @@
-import { connect, Db, MongoClient, TransactionOptions } from "mongodb";
+import { connect, CursorResult, Db, MongoClient, TransactionOptions } from "mongodb";
 import { GLOBAL_KEY, mongoUri } from "./config";
 import { MessageIndexes } from "./models/Message";
 import { GlobalRoomInMongo, RoomIndexes, RoomInMongo } from "./models/Room";
@@ -79,6 +79,7 @@ const connectMongoDb = async () => {
       db.collection(collectionNames.rooms).createIndexes(RoomIndexes),
       db.collection(collectionNames.friends).createIndexes(FriendIndexes)
     ]);
+
     const allCollections = await db.listCollections().toArray()
     const allCollectionsName: string[] = allCollections.map(collection => collection.name)
     // Create logs collection

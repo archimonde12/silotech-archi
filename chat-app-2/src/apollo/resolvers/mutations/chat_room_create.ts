@@ -9,8 +9,8 @@ import {
   db,
   transactionOptions,
 } from "../../../mongo";
-import { captureExeption } from "../../../sentry";
-import { checkUsersInDatabase, getSlugByToken, saveLog } from "../../../ulti";
+import { CaptureException } from "../../../sentry";
+import { checkUsersInDatabase, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
 const chat_room_create = async (
   root: any,
@@ -18,22 +18,13 @@ const chat_room_create = async (
   ctx: any
 ): Promise<any> => {
   const clientIp = getClientIp(ctx.req)
-  const ticket=`${new Date().getTime()}.${ticketNo}.${clientIp?clientIp:"unknow"}`
+  const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
   increaseTicketNo()
-  //Start transcation
+  //Start transaction
   const session = client.startSession();
   try {
     //Create request log
-    const requestlog: Log = {
-      ticket,
-      args,
-      createdAt: new Date(),
-      function: chat_room_create.name,
-      type: "request",
-      clientIp: clientIp ? clientIp : 'unknow',
-      result: 'received a request'
-    }
-    db.collection(collectionNames.logs).insertOne(requestlog)
+    saveRequestLog(ticket, args, chat_room_create.name, clientIp)
     console.log("======ROOM CREATE=====");
     //Get arguments
     console.log({ args });
@@ -48,7 +39,7 @@ const chat_room_create = async (
       message: "",
       data: null,
     };
-    const transactionResults: any = await session.withTransaction(async () => {
+    await session.withTransaction(async () => {
       //Check conditions input
       let checkSlugs: any;
       switch (roomType) {
@@ -103,37 +94,23 @@ const chat_room_create = async (
         .insertMany(insertMemberDocs, { session });
       console.log(`${insertNewMemRes.insertedCount} new document(s) was/were inserted to members collection`);
       const dataResult: RoomInMongo = { ...insertRoomDoc, _id: insertedId };
-      //Create success logs
-      const successlog: Log = {
-        ticket,
-        args,
-        createdAt: new Date(),
-        function: chat_room_create.name,
-        type: "success",
-        clientIp: clientIp ? clientIp : 'unknow',
-        result: "create new room success!"
-      }
-      db.collection(collectionNames.logs).insertOne(successlog)
+
       finalResult.message = `create new room success!`;
       finalResult.data = dataResult;
-       //Create success logs
-       saveLog(ticket, args, chat_room_create.name, "success", finalResult.message, clientIp)
+      //Create success logs
+      saveSuccessLog(ticket, args, chat_room_create.name, finalResult.message, clientIp)
     }, transactionOptions);
-    if (!transactionResults) {
-      console.log("The transaction was intentionally aborted.");
-    } else {
-      console.log("The transaction was successfully committed.");
-    }
+
     return finalResult
   } catch (e) {
-     //Create error logs
-     const errorResult = JSON.stringify({
+    //Create error logs
+    const errorResult = JSON.stringify({
       name: e.name,
       message: e.message,
       stack: e.stack
     })
-    saveLog(ticket, args, chat_room_create.name, "error", errorResult, clientIp)
-    
+    saveErrorLog(ticket, args, chat_room_create.name, errorResult, clientIp)
+
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
@@ -141,7 +118,7 @@ const chat_room_create = async (
     if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
       throw new Error(e.message)
     } else {
-      captureExeption(e, { args })
+      CaptureException(e, { args })
       throw new Error("CA:004")
     }
   } finally {

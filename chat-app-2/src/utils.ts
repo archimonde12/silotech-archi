@@ -10,6 +10,7 @@ import { collectionNames, db } from "./mongo";
 import { existsAsync } from "./redis";
 import { Log, LogType } from "./models/Log";
 import { getClientIp } from "@supercharge/request-ip/dist";
+import { CaptureException } from "./sentry";
 
 export const createInboxRoomKey = (slug1: string, slug2: string): string => {
   if (slug1 > slug2) {
@@ -92,9 +93,9 @@ export const getSlugByToken = async (token: String): Promise<string> => {
 
 };
 
-export const createCheckFriendQuery = (senderSlug: string, reciverSlug: string) => ({
-  slug1: senderSlug > reciverSlug ? senderSlug : reciverSlug,
-  slug2: senderSlug <= reciverSlug ? senderSlug : reciverSlug,
+export const createCheckFriendQuery = (senderSlug: string, receiverSlug: string) => ({
+  slug1: senderSlug > receiverSlug ? senderSlug : receiverSlug,
+  slug2: senderSlug <= receiverSlug ? senderSlug : receiverSlug,
 });
 
 export const ArrayRemoveNull = (_array: any[]): any[] => {
@@ -143,15 +144,52 @@ export const queryInbox = async (slug: string, limit: number) => {
   }
 }
 
-export const saveLog = (_ticket: string, _args: any, _functionName: string, _type: LogType, _result: string, _clientIp: string | undefined) => {
+export const saveRequestLog = (_ticket: string, _args: any, _functionName: string, _clientIp: string | undefined) => {
   const _log: Log = {
     ticket: _ticket,
     args: _args,
     createdAt: new Date(),
     function: _functionName,
-    type: _type,
-    clientIp: _clientIp ? _clientIp : 'unknow',
+    type: "request",
+    clientIp: _clientIp ? _clientIp : 'unknown',
+    result: "received a request"
+  }
+  db.collection(collectionNames.logs).insertOne(_log)
+}
+
+export const saveSuccessLog = (_ticket: string, _args: any, _functionName: string, _result: string, _clientIp: string | undefined) => {
+  const _log: Log = {
+    ticket: _ticket,
+    args: _args,
+    createdAt: new Date(),
+    function: _functionName,
+    type: 'success',
+    clientIp: _clientIp ? _clientIp : 'unknown',
     result: _result
   }
   db.collection(collectionNames.logs).insertOne(_log)
+}
+
+export const saveErrorLog = (_ticket: string, _args: any, _functionName: string, _result: string, _clientIp: string | undefined) => {
+  const _log: Log = {
+    ticket: _ticket,
+    args: _args,
+    createdAt: new Date(),
+    function: _functionName,
+    type: 'error',
+    clientIp: _clientIp ? _clientIp : 'unknown',
+    result: _result
+  }
+  db.collection(collectionNames.logs).insertOne(_log)
+}
+
+
+export const ErrorResolve = (e: Error, args: any, funcName: string) => {
+  console.log(`${funcName}:`, e)
+  if (e.message.startsWith("CA:") || e.message.startsWith("AS:")) {
+    throw new Error(e.message)
+  } else {
+    CaptureException(e, { args })
+    throw new Error("CA:004")
+  }
 }

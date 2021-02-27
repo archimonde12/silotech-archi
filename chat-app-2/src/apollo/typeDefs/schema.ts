@@ -117,7 +117,6 @@ export const typeDefs = gql`
   }
 
   type Query {
-    test:String
     # Search users
     chat_search_users(text:String,limit:Int):[User]
     # Message
