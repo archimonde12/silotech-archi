@@ -28,7 +28,7 @@ const getNewestNewsRoomMessage = async () => {
     } catch (e) { throw e }
 }
 
-const chat_system_publish_news = async (root: any,
+export const chat_api_system_publish_news = async (root: any,
     args: any,
     ctx: any
 ): Promise<any> => {
@@ -39,7 +39,7 @@ const chat_system_publish_news = async (root: any,
     const session = client.startSession();
     try {
         //Create request log
-        saveRequestLog(ticket, args, chat_system_publish_news.name, clientIp)
+        saveRequestLog(ticket, args, chat_api_system_publish_news.name, clientIp)
         //Get arguments
         const { data } = args
         let finalResult: ResultMessage = {
@@ -80,7 +80,7 @@ const chat_system_publish_news = async (root: any,
         }, transactionOptions)
         pubsub.publish("userListInbox", { updateInboxList: true });
         //Create success logs
-        saveSuccessLog(ticket, args, chat_system_publish_news.name, finalResult.message, clientIp)
+        saveSuccessLog(ticket, args, chat_api_system_publish_news.name, finalResult.message, clientIp)
         return finalResult
     } catch (e) {
         //Create error logs
@@ -89,14 +89,14 @@ const chat_system_publish_news = async (root: any,
             message: e.message,
             stack: e.stack
         })
-        saveErrorLog(ticket, args, chat_system_publish_news.name, errorResult, clientIp)
+        saveErrorLog(ticket, args, chat_api_system_publish_news.name, errorResult, clientIp)
         if (session.inTransaction()) {
             await session.abortTransaction();
         }
-        ErrorResolve(e, args, chat_system_publish_news.name)
+        ErrorResolve(e, args, chat_api_system_publish_news.name)
     } finally {
         session.endSession()
     }
 }
 
-export { chat_system_publish_news, newest_news_room_message, setNewestNewsRoomMessage, getNewestNewsRoomMessage }
+export { setNewestNewsRoomMessage, getNewestNewsRoomMessage, newest_news_room_message }

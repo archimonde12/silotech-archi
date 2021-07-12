@@ -2,10 +2,9 @@ import { getClientIp } from "@supercharge/request-ip/dist";
 import { increaseTicketNo, Log, ticketNo } from "../../../models/Log";
 import { ResultMessage } from "../../../models/ResultMessage";
 import { collectionNames, db, client, transactionOptions } from "../../../mongo";
-import { CaptureException } from "../../../sentry";
 import { checkUsersInDatabase, createCheckFriendQuery, ErrorResolve, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
-const chat_friend_block_remove = async (
+export const chat_api_user_friend_unblock = async (
   root: any,
   args: any,
   ctx: any
@@ -15,7 +14,7 @@ const chat_friend_block_remove = async (
   increaseTicketNo()
   const session = client.startSession();
   try {
-    saveRequestLog(ticket, args, chat_friend_block_remove.name, clientIp)
+    saveRequestLog(ticket, args, chat_api_user_friend_unblock.name, clientIp)
 
     const token = ctx.req.headers.authorization;
     const { senderSlug } = args;
@@ -42,7 +41,7 @@ const chat_friend_block_remove = async (
         .collection(collectionNames.friends)
         .updateOne(checkFriendQuery, updateDoc, { session });
       finalResult.message = `${receiverSlug} removed block ${senderSlug} successful`
-      saveSuccessLog(ticket, args, chat_friend_block_remove.name, finalResult.message, clientIp)
+      saveSuccessLog(ticket, args, chat_api_user_friend_unblock.name, finalResult.message, clientIp)
     }, transactionOptions)
     return finalResult
   } catch (e) {
@@ -51,14 +50,13 @@ const chat_friend_block_remove = async (
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_friend_block_remove.name, errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_api_user_friend_unblock.name, errorResult, clientIp)
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
-    ErrorResolve(e, args, chat_friend_block_remove.name)
+    ErrorResolve(e, args, chat_api_user_friend_unblock.name)
   } finally {
     session.endSession()
   }
 };
 
-export { chat_friend_block_remove };

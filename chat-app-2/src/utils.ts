@@ -1,4 +1,4 @@
-import { getNewestNewsRoomMessage, newest_news_room_message } from "./apollo/resolvers/mutations/chat_system_publish_news"
+import { getNewestNewsRoomMessage, newest_news_room_message } from "./apollo/resolvers/mutations/chat_api_system_publish_news"
 import md5 from "md5";
 import { ClientSession, ObjectID } from "mongodb";
 import { NEWS_ROOM, secretCombinePairKey } from "./config";

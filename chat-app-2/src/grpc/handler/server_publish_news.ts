@@ -1,4 +1,4 @@
-import { setNewestNewsRoomMessage } from "../../apollo/resolvers/mutations/chat_system_publish_news";
+import { setNewestNewsRoomMessage } from "../../apollo/resolvers/mutations/chat_api_system_publish_news";
 import { pubsub } from "../../apollo/resolvers/subscriptions";
 import { NEWS_ROOM } from "../../config";
 import { Message, MessageTypes } from "../../models/Message";

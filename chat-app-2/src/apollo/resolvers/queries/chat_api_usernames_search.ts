@@ -3,13 +3,13 @@ import { increaseTicketNo, ticketNo } from "../../../models/Log";
 import { collectionNames, db } from "../../../mongo";
 import { ErrorResolve, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
-const chat_search_users = async (root: any, args: any, ctx: any) => {
+export const chat_api_usernames_search = async (root: any, args: any, ctx: any) => {
   const clientIp = getClientIp(ctx.req)
   const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
   increaseTicketNo()
   try {
     //Create request log
-    saveRequestLog(ticket, args, chat_search_users.name, clientIp)
+    saveRequestLog(ticket, args, chat_api_usernames_search.name, clientIp)
     console.log("===GET ALL FRIEND REQUESTS===");
     //Get arguments
     // console.log({ args });
@@ -27,7 +27,7 @@ const chat_search_users = async (root: any, args: any, ctx: any) => {
       .limit(limit)
       .toArray();
     //Create success logs
-    saveSuccessLog(ticket, args, chat_search_users.name, "successful", clientIp)
+    saveSuccessLog(ticket, args, chat_api_usernames_search.name, "successful", clientIp)
     return allUserQuery;
   } catch (e) {
     //Create error logs
@@ -36,8 +36,7 @@ const chat_search_users = async (root: any, args: any, ctx: any) => {
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_search_users.name, errorResult, clientIp)
-    ErrorResolve(e, args, chat_search_users.name)
+    saveErrorLog(ticket, args, chat_api_usernames_search.name, errorResult, clientIp)
+    ErrorResolve(e, args, chat_api_usernames_search.name)
   }
 };
-export { chat_search_users };

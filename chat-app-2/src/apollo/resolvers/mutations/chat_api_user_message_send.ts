@@ -20,7 +20,7 @@ import {
 } from "../../../utils";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
-const chat_message_send = async (
+export const chat_api_user_message_send = async (
   root: any,
   args: any,
   ctx: any
@@ -32,7 +32,7 @@ const chat_message_send = async (
   const session = client.startSession();
   try {
     //Create request log
-    saveRequestLog(ticket, args, chat_message_send.name,  clientIp)
+    saveRequestLog(ticket, args, chat_api_user_message_send.name,  clientIp)
     console.log("======MESSAGE SEND=====");
     //Get arguments
     const token = ctx.req.headers.authorization;
@@ -76,7 +76,7 @@ const chat_message_send = async (
       }
     }, transactionOptions)
     //Create success logs
-    saveSuccessLog(ticket, args, chat_message_send.name,  finalResult.message, clientIp)
+    saveSuccessLog(ticket, args, chat_api_user_message_send.name,  finalResult.message, clientIp)
    
     return finalResult
   } catch (e) {
@@ -86,7 +86,7 @@ const chat_message_send = async (
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_message_send.name, errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_api_user_message_send.name, errorResult, clientIp)
     
     if (session.inTransaction()) {
       await session.abortTransaction();
@@ -294,4 +294,4 @@ const sendMessToUser = async (
     throw e
   }
 };
-export { chat_message_send };
+

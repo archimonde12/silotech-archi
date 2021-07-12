@@ -5,7 +5,7 @@ import { ResultMessage } from "../../../models/ResultMessage";
 import { collectionNames, db, client, transactionOptions } from "../../../mongo";
 import { checkUsersInDatabase, createCheckFriendQuery, ErrorResolve, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
-const chat_friend_block = async (root: any,
+export const chat_api_user_friend_block = async (root: any,
   args: any,
   ctx: any): Promise<any> => {
   const clientIp = getClientIp(ctx.req)
@@ -14,7 +14,7 @@ const chat_friend_block = async (root: any,
   const session = client.startSession();
   try {
     //Create request log
-    saveRequestLog(ticket, args, chat_friend_block.name, clientIp)
+    saveRequestLog(ticket, args, chat_api_user_friend_block.name, clientIp)
     //Get arguments
     const token = ctx.req.headers.authorization;
     const { senderSlug } = args;
@@ -63,7 +63,7 @@ const chat_friend_block = async (root: any,
         .updateOne(checkFriendQuery, updateDoc, { session });
       finalResult.message = `block successful!`
       //Create success logs
-      saveSuccessLog(ticket, args, chat_friend_block.name, finalResult.message, clientIp)
+      saveSuccessLog(ticket, args, chat_api_user_friend_block.name, finalResult.message, clientIp)
     }, transactionOptions)
     return finalResult
   } catch (e) {
@@ -73,14 +73,13 @@ const chat_friend_block = async (root: any,
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_friend_block.name, errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_api_user_friend_block.name, errorResult, clientIp)
 
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
-    ErrorResolve(e, args, chat_friend_block.name)
+    ErrorResolve(e, args, chat_api_user_friend_block.name)
   } finally {
     session.endSession()
   }
 }
-export { chat_friend_block };

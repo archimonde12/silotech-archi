@@ -6,13 +6,13 @@ import { collectionNames, db } from "../../../mongo";
 import { CaptureException } from "../../../sentry";
 import { ErrorResolve, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
-const chat_get_inbox_rooms = async (root: any, args: any, ctx: any): Promise<any> => {
+const chat_api_inbox_rooms_get = async (root: any, args: any, ctx: any): Promise<any> => {
   const clientIp = getClientIp(ctx.req)
   const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
   increaseTicketNo()
   try {
     //Create request log
-    saveRequestLog(ticket, args, chat_get_inbox_rooms.name,  clientIp)
+    saveRequestLog(ticket, args, chat_api_inbox_rooms_get.name,  clientIp)
     console.log("=====GET INBOX ROOMS=====")
     //Get arguments
     const token = ctx.req.headers.authorization
@@ -26,7 +26,7 @@ const chat_get_inbox_rooms = async (root: any, args: any, ctx: any): Promise<any
     // console.log({ inboxRoomsData })
     console.log(`${inboxRoomsData.length} document was found in the rooms collection`)
     //Create success logs
-    saveSuccessLog(ticket, args, chat_get_inbox_rooms.name,  "successful", clientIp)
+    saveSuccessLog(ticket, args, chat_api_inbox_rooms_get.name,  "successful", clientIp)
     return inboxRoomsData
   }
   catch (e) {
@@ -36,9 +36,9 @@ const chat_get_inbox_rooms = async (root: any, args: any, ctx: any): Promise<any
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_get_inbox_rooms.name, errorResult, clientIp)
-    ErrorResolve(e, args, chat_get_inbox_rooms.name)
+    saveErrorLog(ticket, args, chat_api_inbox_rooms_get.name, errorResult, clientIp)
+    ErrorResolve(e, args, chat_api_inbox_rooms_get.name)
   }
 }
 
-export { chat_get_inbox_rooms }
+export { chat_api_inbox_rooms_get }

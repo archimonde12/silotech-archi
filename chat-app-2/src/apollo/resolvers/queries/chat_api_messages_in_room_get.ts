@@ -6,13 +6,13 @@ import { collectionNames, db } from "../../../mongo";
 import { CaptureException } from "../../../sentry";
 import { createInboxRoomKey, ErrorResolve, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
-const chat_get_messages_in_room = async (root: any, args: any, ctx: any): Promise<any> => {
+const chat_api_messages_in_room_get = async (root: any, args: any, ctx: any): Promise<any> => {
   const clientIp = getClientIp(ctx.req)
   const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
   increaseTicketNo()
   try {
     //Create request log
-    saveRequestLog(ticket, args, chat_get_messages_in_room.name, clientIp)
+    saveRequestLog(ticket, args, chat_api_messages_in_room_get.name, clientIp)
     console.log("======GET MESSAGES=====");
     //Get arguments
     console.log({ args });
@@ -41,7 +41,7 @@ const chat_get_messages_in_room = async (root: any, args: any, ctx: any): Promis
       default: throw new Error('CA:021')
     }
     //Create success logs
-    saveSuccessLog(ticket, args, chat_get_messages_in_room.name, "successful", clientIp)
+    saveSuccessLog(ticket, args, chat_api_messages_in_room_get.name, "successful", clientIp)
     return result
   } catch (e) {
     //Create error logs
@@ -50,11 +50,11 @@ const chat_get_messages_in_room = async (root: any, args: any, ctx: any): Promis
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_get_messages_in_room.name, errorResult, clientIp)
-    ErrorResolve(e, args, chat_get_messages_in_room.name)
+    saveErrorLog(ticket, args, chat_api_messages_in_room_get.name, errorResult, clientIp)
+    ErrorResolve(e, args, chat_api_messages_in_room_get.name)
   }
 };
-export { chat_get_messages_in_room };
+export { chat_api_messages_in_room_get };
 
 const getMessInPublicRoom = async (receiver: string, pageSize: number, page: number) => {
   try {

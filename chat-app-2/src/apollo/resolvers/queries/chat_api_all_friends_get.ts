@@ -4,13 +4,13 @@ import { collectionNames, db } from "../../../mongo";
 import { CaptureException } from "../../../sentry";
 import { ErrorResolve, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
-const chat_get_all_friends = async (root: any, args: any, ctx: any) => {
+const chat_api_all_friends_get = async (root: any, args: any, ctx: any) => {
   const clientIp = getClientIp(ctx.req)
   const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
   increaseTicketNo()
   try {
     //Create request log
-    saveRequestLog(ticket, args, chat_get_all_friends.name, clientIp)
+    saveRequestLog(ticket, args, chat_api_all_friends_get.name, clientIp)
     console.log("===GET ALL FRIENDS===")
     //Get arguments
     console.log({ args });
@@ -26,7 +26,7 @@ const chat_get_all_friends = async (root: any, args: any, ctx: any) => {
     const allFriends = getAllFriendsRes.map(friendContract => friendContract.slug1 === slug ? { slug: friendContract.slug2 } : { slug: friendContract.slug1 })
     console.log({ allFriends })
     //Create success logs
-    saveSuccessLog(ticket, args, chat_get_all_friends.name, "successful", clientIp)
+    saveSuccessLog(ticket, args, chat_api_all_friends_get.name, "successful", clientIp)
     return allFriends
   }
   catch (e) {
@@ -36,9 +36,9 @@ const chat_get_all_friends = async (root: any, args: any, ctx: any) => {
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_get_all_friends.name, errorResult, clientIp)
-    ErrorResolve(e, args, chat_get_all_friends.name)
+    saveErrorLog(ticket, args, chat_api_all_friends_get.name, errorResult, clientIp)
+    ErrorResolve(e, args, chat_api_all_friends_get.name)
   }
 
 }
-export { chat_get_all_friends }
+export { chat_api_all_friends_get }

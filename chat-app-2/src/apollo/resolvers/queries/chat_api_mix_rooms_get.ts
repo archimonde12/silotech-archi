@@ -7,14 +7,14 @@ import { collectionNames, db } from "../../../mongo";
 import { CaptureException } from "../../../sentry";
 import { ErrorResolve, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
-const chat_get_mix_rooms = async (root: any, args: any, ctx: any) => {
+export const chat_api_mix_rooms_get = async (root: any, args: any, ctx: any) => {
     const clientIp = getClientIp(ctx.req)
     const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
     increaseTicketNo()
 
     try {
         //Create request log
-        saveRequestLog(ticket, args, chat_get_mix_rooms.name,  clientIp)
+        saveRequestLog(ticket, args, chat_api_mix_rooms_get.name,  clientIp)
         console.log("=====GET MIX ROOMS=====")
         //Get arguments
         console.log({ args });
@@ -53,7 +53,7 @@ const chat_get_mix_rooms = async (root: any, args: any, ctx: any) => {
         }
         allRooms.sort(sortFunc)
         //Create success logs
-        saveSuccessLog(ticket, args, chat_get_mix_rooms.name,  "successful", clientIp)
+        saveSuccessLog(ticket, args, chat_api_mix_rooms_get.name,  "successful", clientIp)
         return allRooms.slice(0, pageSize)
     } catch (e) {
         //Create error logs
@@ -62,9 +62,8 @@ const chat_get_mix_rooms = async (root: any, args: any, ctx: any) => {
             message: e.message,
             stack: e.stack
         })
-        saveErrorLog(ticket, args, chat_get_mix_rooms.name, errorResult, clientIp)
-        ErrorResolve(e, args, chat_get_mix_rooms.name)
+        saveErrorLog(ticket, args, chat_api_mix_rooms_get.name, errorResult, clientIp)
+        ErrorResolve(e, args, chat_api_mix_rooms_get.name)
     }
 }
 
-export { chat_get_mix_rooms }

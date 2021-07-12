@@ -10,11 +10,10 @@ import {
   client,
   transactionOptions,
 } from "../../../mongo";
-import { CaptureException } from "../../../sentry";
 import { checkRoomIdInMongoInMutation, ErrorResolve, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
-const chat_room_set_role = async (
+export const chat_api_user_room_role_set = async (
   root: any,
   args: any,
   ctx: any
@@ -26,7 +25,7 @@ const chat_room_set_role = async (
   const session = client.startSession();
   try {
     //Create request log
-    saveRequestLog(ticket, args, chat_room_set_role.name, clientIp)
+    saveRequestLog(ticket, args, chat_api_user_room_role_set.name, clientIp)
     console.log("=====ROOM SET ROLE=====");
 
     //Get arguments
@@ -102,7 +101,7 @@ const chat_room_set_role = async (
     }, transactionOptions);
 
     //Create success logs
-    saveSuccessLog(ticket, args, chat_room_set_role.name, finalResult.message, clientIp)
+    saveSuccessLog(ticket, args, chat_api_user_room_role_set.name, finalResult.message, clientIp)
     return finalResult
   } catch (e) {
     //Create error logs
@@ -111,14 +110,14 @@ const chat_room_set_role = async (
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_room_set_role.name, errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_api_user_room_role_set.name, errorResult, clientIp)
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
-    ErrorResolve(e, args, chat_room_set_role.name)
+    ErrorResolve(e, args, chat_api_user_room_role_set.name)
   } finally {
     session.endSession()
   }
 };
 
-export { chat_room_set_role };
+

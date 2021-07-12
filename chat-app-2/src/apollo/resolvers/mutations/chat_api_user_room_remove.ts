@@ -15,7 +15,7 @@ import { checkRoomIdInMongoInMutation, getSlugByToken, saveErrorLog, saveRequest
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
 
-const chat_room_remove = async (
+export const chat_api_user_room_remove = async (
   root: any,
   args: any,
   ctx: any
@@ -27,7 +27,7 @@ const chat_room_remove = async (
   const session = client.startSession();
   try {
     //Create request log
-    saveRequestLog(ticket, args, chat_room_remove.name, clientIp)
+    saveRequestLog(ticket, args, chat_api_user_room_remove.name, clientIp)
     console.log("======ROOM REMOVE=====");
     //Get arguments
     console.log({ args });
@@ -122,7 +122,7 @@ const chat_room_remove = async (
     }, transactionOptions);
    
     //Create success logs
-    saveSuccessLog(ticket, args, chat_room_remove.name, finalResult.message, clientIp)
+    saveSuccessLog(ticket, args, chat_api_user_room_remove.name, finalResult.message, clientIp)
     return finalResult
   } catch (e) {
     //Create error logs
@@ -131,7 +131,7 @@ const chat_room_remove = async (
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_room_remove.name, errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_api_user_room_remove.name, errorResult, clientIp)
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
@@ -146,4 +146,4 @@ const chat_room_remove = async (
     session.endSession()
   }
 };
-export { chat_room_remove };
+

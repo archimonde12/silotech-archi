@@ -9,7 +9,7 @@ import { CaptureException } from "../../../sentry";
 import { checkRoomIdInMongoInMutation, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
-const chat_message_delete = async (
+export const chat_api_user_message_delete = async (
   root: any,
   args: any,
   ctx: any
@@ -21,7 +21,7 @@ const chat_message_delete = async (
   const session = client.startSession();
   try {
     //Create request log
-    saveRequestLog(ticket, args, chat_message_delete.name, clientIp)
+    saveRequestLog(ticket, args, chat_api_user_message_delete.name, clientIp)
     console.log("======MESSAGE SEND=====");
     //Get arguments
     console.log({ args });
@@ -76,7 +76,7 @@ const chat_message_delete = async (
         data: null
       };
       //Create success logs
-      saveSuccessLog(ticket, args, chat_message_delete.name, finalResult.message, clientIp)
+      saveSuccessLog(ticket, args, chat_api_user_message_delete.name, finalResult.message, clientIp)
     }, transactionOptions)
 
     return finalResult
@@ -87,7 +87,7 @@ const chat_message_delete = async (
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_message_delete.name, errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_api_user_message_delete.name, errorResult, clientIp)
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
@@ -103,4 +103,5 @@ const chat_message_delete = async (
     session.endSession()
   }
 };
-export { chat_message_delete };
+
+

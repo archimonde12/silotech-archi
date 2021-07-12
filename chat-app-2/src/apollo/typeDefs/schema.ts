@@ -4,7 +4,7 @@ export const typeDefs = gql`
   scalar ObjectID
   scalar Date
 
-  enum RoomType {
+  enum CanBeCreateRoomType {
     global
     public
   }
@@ -36,11 +36,6 @@ export const typeDefs = gql`
     title: String
     betId: String
     content: String
-  }
-
-  input Target{
-    roomType:TargetRoomType!
-    receiver:String
   }
 
   input MessageInput{
@@ -118,77 +113,78 @@ export const typeDefs = gql`
 
   type Query {
     # Search users
-    chat_search_users(text:String,limit:Int):[User]
+    chat_api_usernames_search(search_text:String,limit:Int):[User]
     # Message
-    chat_get_messages_in_room( room: Target!, pageSize:Int,page:Int): [Message]
+    chat_api_messages_in_room_get( roomType:TargetRoomType!,receiver:String, pageSize:Int,page:Int): [Message]
     # Room
-    chat_get_room_details(roomId: ObjectID!): Room
-    chat_get_all_rooms(pageSize:Int,page:Int): [Room]
-    chat_get_inbox_rooms( pageSize:Int,page:Int):[InboxRoom]
-    chat_get_mix_rooms(pageSize:Int,page:Int):[MixRoom]
+    chat_api_room_details_get(roomId: ObjectID!): Room
+    chat_api_all_rooms_get(pageSize:Int,page:Int): [Room]
+    chat_api_inbox_rooms_get( pageSize:Int,page:Int):[InboxRoom]
+    chat_api_mix_rooms_get(pageSize:Int,page:Int):[MixRoom]
     # Member
-    chat_get_all_members(roomId: ObjectID!,pageSize:Int,page:Int): [Member]
+    chat_api_all_members_get(roomId: ObjectID!,pageSize:Int,page:Int): [Member]
     # Friend
-    chat_get_all_friends(pageSize:Int,page:Int):[User]
-    chat_get_all_friend_requests(pageSize:Int,page:Int):[User]
+    chat_api_all_friends_get(pageSize:Int,page:Int):[User]
+    chat_api_all_friend_request_get(pageSize:Int,page:Int):[User]
   }
 
   type Mutation {
     # Room
-    chat_room_create(
+    chat_api_user_room_create(
       title: String!
       startMemberSlugs: [String]!
       roomType: RoomType!
     ): ResultMessage!
-    chat_room_delete( roomId: ObjectID!): ResultMessage!
-    chat_room_join( roomId: ObjectID!): ResultMessage!
-    chat_room_leave( roomId: ObjectID!): ResultMessage!
-    chat_room_add(
+    chat_api_user_room_delete( roomId: ObjectID!): ResultMessage!
+    chat_api_user_room_join( roomId: ObjectID!): ResultMessage!
+    chat_api_user_room_leave( roomId: ObjectID!): ResultMessage!
+    chat_api_user_room_add(
       roomId: ObjectID!
       addMemberSlugs: [String]!
     ): ResultMessage!
-    chat_room_remove(
+    chat_api_user_room_remove(
       roomId: ObjectID!
       removeMemberSlugs: [String!]
     ): ResultMessage!
-    chat_room_block(
+    chat_api_user_room_block(
       roomId: ObjectID!
       blockMemberSlugs: [String!]
     ): ResultMessage!
-    chat_room_remove_block(
+    chat_api_user_room_unblock(
       roomId:ObjectID!
       blockMemberSlug:String!
     ): ResultMessage!
-    chat_room_set_role(
+    chat_api_user_room_role_set(
       roomId:ObjectID!
       memberSlug:String!
       roleSet:MemberRole!
     ):ResultMessage!
     # Message
-    chat_message_send(
-      target: Target!
+    chat_api_user_message_send(
+      roomType:TargetRoomType!
+      receiver:String
       message:MessageInput!
     ): ResultMessage!
 
-    chat_message_delete(
+    chat_api_user_message_delete(
       roomId: ObjectID!
       messageId: ObjectID!
     ): ResultMessage!
 
     # Friend
-    chat_friend_send_request(receiverSlug:String!):ResultMessage!
-    chat_friend_accept_request(senderSlug:String!):ResultMessage!
-    chat_friend_reject_request(senderSlug:String!):ResultMessage!
-    chat_friend_block(senderSlug:String!):ResultMessage!
-    chat_friend_block_remove(senderSlug:String!):ResultMessage!
+    chat_api_user_friend_request_send(receiverSlug:String!):ResultMessage!
+    chat_api_user_friend_request_accept(senderSlug:String!):ResultMessage!
+    chat_api_user_friend_request_reject(senderSlug:String!):ResultMessage!
+    chat_api_user_friend_block(senderSlug:String!):ResultMessage!
+    chat_api_user_friend_unblock(senderSlug:String!):ResultMessage!
 
     #System
-    chat_system_publish_news(data:MessData!):ResultMessage!
+    chat_api_system_publish_news(data:MessData!):ResultMessage!
   }
 
   type Subscription {
-    room_listen(roomType:RoomType!,roomId: String!): SubMessage
-    inbox_room_listen(receiverSlug:String!):SubMessage
-    userListInbox:[Message]
+    chat_api_user_subs_room(roomType:RoomType!,roomId: String!): SubMessage
+    chat_api_user_subs_inbox_room(receiverSlug:String!):SubMessage
+    chat_api_user_list_inbox:[Message]
   }
 `;

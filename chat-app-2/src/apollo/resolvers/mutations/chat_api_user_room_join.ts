@@ -16,7 +16,7 @@ import { CaptureException } from "../../../sentry";
 import { checkRoomIdInMongoInMutation, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
-const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
+export const chat_api_user_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
   const clientIp = getClientIp(ctx.req)
   const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
   increaseTicketNo()
@@ -24,7 +24,7 @@ const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
   const session = client.startSession();
   try {
     //Create request log
-    saveRequestLog(ticket, args, chat_room_join.name,  clientIp)
+    saveRequestLog(ticket, args, chat_api_user_room_join.name,  clientIp)
 
     console.log("======ROOM JOIN=====");
     //Get arguments
@@ -111,7 +111,7 @@ const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
         data: dataResult,
       };
       //Create success logs
-      saveSuccessLog(ticket, args, chat_room_join.name,  finalResult.message, clientIp)
+      saveSuccessLog(ticket, args, chat_api_user_room_join.name,  finalResult.message, clientIp)
     }, transactionOptions);
    
     return finalResult
@@ -122,7 +122,7 @@ const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_room_join.name, errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_api_user_room_join.name, errorResult, clientIp)
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
@@ -137,4 +137,4 @@ const chat_room_join = async (root: any, args: any, ctx: any): Promise<any> => {
     session.endSession()
   }
 };
-export { chat_room_join };
+

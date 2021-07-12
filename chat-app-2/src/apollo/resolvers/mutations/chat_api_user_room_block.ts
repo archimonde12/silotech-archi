@@ -10,7 +10,7 @@ import { CaptureException } from "../../../sentry";
 import { checkRoomIdInMongoInMutation, checkUsersInDatabase, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
-const chat_room_block = async (
+export const chat_api_user_room_block = async (
   root: any,
   args: any,
   ctx: any
@@ -22,7 +22,7 @@ const chat_room_block = async (
   const session = client.startSession();
   try {
     //Create request log
-    saveRequestLog(ticket, args, chat_room_block.name, clientIp)
+    saveRequestLog(ticket, args, chat_api_user_room_block.name, clientIp)
 
     console.log("======ROOM BLOCK=====");
     //Get arguments
@@ -124,7 +124,7 @@ const chat_room_block = async (
       pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
       finalResult.message = `${totalMemberBlock} member(s) has been block!`
       //Create success logs
-      saveSuccessLog(ticket, args, chat_room_block.name, finalResult.message, clientIp)
+      saveSuccessLog(ticket, args, chat_api_user_room_block.name, finalResult.message, clientIp)
     }, transactionOptions)
 
     return finalResult
@@ -135,7 +135,7 @@ const chat_room_block = async (
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_room_block.name, errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_api_user_room_block.name, errorResult, clientIp)
 
 
     if (session.inTransaction()) {
@@ -152,4 +152,4 @@ const chat_room_block = async (
     session.endSession()
   }
 };
-export { chat_room_block };
+

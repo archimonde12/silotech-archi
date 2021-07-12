@@ -5,13 +5,13 @@ import { collectionNames, db } from "../../../mongo";
 import { CaptureException } from "../../../sentry";
 import { ErrorResolve, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
-const chat_get_all_members = async (root: any, args: any, ctx: any): Promise<any> => {
+const chat_api_all_members_get = async (root: any, args: any, ctx: any): Promise<any> => {
     const clientIp = getClientIp(ctx.req)
     const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
     increaseTicketNo()
     try {
         //Create request log
-        saveRequestLog(ticket, args, chat_get_all_members.name, clientIp)
+        saveRequestLog(ticket, args, chat_api_all_members_get.name, clientIp)
         console.log("======GET ALL MEMBERS=====");
         //Get arguments
         console.log({ args });
@@ -38,7 +38,7 @@ const chat_get_all_members = async (root: any, args: any, ctx: any): Promise<any
         console.log(`${membersData.length} document(s) was/were found in the room collection`)
         if (membersData.length === RoomData.totalMembers) {
             //Create success logs
-            saveSuccessLog(ticket, args, chat_get_all_members.name, "successful", clientIp)
+            saveSuccessLog(ticket, args, chat_api_all_members_get.name, "successful", clientIp)
             return membersData
         }
         throw new Error("CA:004");
@@ -49,8 +49,8 @@ const chat_get_all_members = async (root: any, args: any, ctx: any): Promise<any
             message: e.message,
             stack: e.stack
         })
-        saveErrorLog(ticket, args, chat_get_all_members.name, errorResult, clientIp)
-        ErrorResolve(e, args, chat_get_all_members.name)
+        saveErrorLog(ticket, args, chat_api_all_members_get.name, errorResult, clientIp)
+        ErrorResolve(e, args, chat_api_all_members_get.name)
     }
 }
-export { chat_get_all_members }
+export { chat_api_all_members_get }

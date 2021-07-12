@@ -12,7 +12,7 @@ import {
 import { CaptureException } from "../../../sentry";
 import { checkUsersInDatabase, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
-const chat_room_create = async (
+export const chat_api_user_room_create = async (
   root: any,
   args: any,
   ctx: any
@@ -24,7 +24,7 @@ const chat_room_create = async (
   const session = client.startSession();
   try {
     //Create request log
-    saveRequestLog(ticket, args, chat_room_create.name, clientIp)
+    saveRequestLog(ticket, args, chat_api_user_room_create.name, clientIp)
     console.log("======ROOM CREATE=====");
     //Get arguments
     console.log({ args });
@@ -98,7 +98,7 @@ const chat_room_create = async (
       finalResult.message = `create new room success!`;
       finalResult.data = dataResult;
       //Create success logs
-      saveSuccessLog(ticket, args, chat_room_create.name, finalResult.message, clientIp)
+      saveSuccessLog(ticket, args, chat_api_user_room_create.name, finalResult.message, clientIp)
     }, transactionOptions);
 
     return finalResult
@@ -109,7 +109,7 @@ const chat_room_create = async (
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_room_create.name, errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_api_user_room_create.name, errorResult, clientIp)
 
     if (session.inTransaction()) {
       await session.abortTransaction();
@@ -126,4 +126,3 @@ const chat_room_create = async (
   }
 };
 
-export { chat_room_create };

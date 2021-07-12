@@ -1,28 +1,28 @@
-import { chat_get_all_members } from "./chat_get_all_members"
-import { chat_get_all_rooms } from "./chat_get_all_rooms"
-import { chat_get_messages_in_room } from "./chat_get_messages_in_room"
-import { chat_get_room_details } from "./chat_get_room_details"
-import {chat_get_inbox_rooms} from "./chat_get_inbox_rooms"
-import {chat_get_all_friends} from "./chat_get_all_friends"
-import {chat_get_all_friend_requests} from "./chat_get_all_friend_requests"
-import {chat_search_users} from "./chat_search_users"
-import {chat_get_mix_rooms} from "./chat_get_mix_rooms"
+import {chat_api_usernames_search} from "./chat_api_usernames_search"
+import { chat_api_room_details_get } from "./chat_api_room_details_get"
+import { chat_api_all_rooms_get } from "./chat_api_all_rooms_get"
+import {chat_api_inbox_rooms_get} from "./chat_api_inbox_rooms_get"
+import {chat_api_mix_rooms_get} from "./chat_api_mix_rooms_get"
+import { chat_api_messages_in_room_get } from "./chat_api_messages_in_room_get"
+import { chat_api_all_members_get } from "./chat_api_all_members_get"
+import {chat_api_all_friends_get} from "./chat_api_all_friends_get"
+import {chat_api_all_friend_request_get} from "./chat_api_all_friend_request_get"
 
 const Query = {
     //Search users
-    chat_search_users,
+    chat_api_usernames_search,
     //Room
-    chat_get_all_rooms,
-    chat_get_room_details,
-    chat_get_inbox_rooms,
-    chat_get_mix_rooms,
+    chat_api_room_details_get,
+    chat_api_all_rooms_get,
+    chat_api_inbox_rooms_get,
+    chat_api_mix_rooms_get,
     //Message
-    chat_get_messages_in_room,
+    chat_api_messages_in_room_get,
     //Member
-    chat_get_all_members,
+    chat_api_all_members_get,
     //Friend
-    chat_get_all_friends,
-    chat_get_all_friend_requests
+    chat_api_all_friends_get,
+    chat_api_all_friend_request_get
 };
 
 export { Query };

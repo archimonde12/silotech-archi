@@ -1,9 +1,10 @@
 import { getClientIp } from "@supercharge/request-ip/dist";
 import { ObjectId } from "mongodb";
-import { ADMIN_KEY } from "../../../config";
 import { increaseTicketNo, ticketNo } from "../../../models/Log";
+import { MemberRole } from "../../../models/Member";
 import { ResultMessage } from "../../../models/ResultMessage";
 import { RoomInMongo } from "../../../models/Room";
+import { UserInMongo } from "../../../models/User";
 import {
   client,
   collectionNames,
@@ -12,8 +13,10 @@ import {
 } from "../../../mongo";
 import { CaptureException } from "../../../sentry";
 import { checkRoomIdInMongoInMutation, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
+import { LISTEN_CHANEL, pubsub } from "../subscriptions";
 
-const chat_room_delete = async (
+
+export const chat_api_user_room_leave = async (
   root: any,
   args: any,
   ctx: any
@@ -21,23 +24,22 @@ const chat_room_delete = async (
   const clientIp = getClientIp(ctx.req)
   const ticket = `${new Date().getTime()}.${ticketNo}.${clientIp ? clientIp : "unknown"}`
   increaseTicketNo()
-
   //Start transaction
   const session = client.startSession();
   try {
     //Create request log
-    saveRequestLog(ticket, args, chat_room_delete.name, clientIp)
-
-    console.log("======ROOM DELETE=====");
+    saveRequestLog(ticket, args, chat_api_user_room_leave.name, clientIp)
+    console.log("======ROOM LEAVE=====");
     //Get arguments
     console.log({ args });
     const token = ctx.req.headers.authorization;
     const { roomId } = args;
     const objectRoomId = new ObjectId(roomId);
     //Check arguments
-    if (!roomId.trim() || !roomId) throw new Error("CA:020");
+    if (!token || !roomId) throw new Error("all arguments must be provided");
+    if (!roomId.trim()) throw new Error("roomId must be provided");
     //Verify token and get slug
-    const masterSlug = await getSlugByToken(token);
+    const memberSlug = await getSlugByToken(token);
     let finalResult: ResultMessage = {
       message: "",
       data: null,
@@ -50,31 +52,48 @@ const chat_room_delete = async (
         throw new Error("CA:016")
       }
       console.log('1 document was found in the room collection')
-      //Check room type
-      if (RoomData.type === `global` && masterSlug !== ADMIN_KEY) throw new Error("CA:044")
-      //Check master
-      if (masterSlug !== RoomData.createdBy.slug) throw new Error("CA:017")
-      console.log(`${masterSlug} is the master of this room`)
-      //Delete the room
-      const deleteRoomRes = await db
-        .collection(collectionNames.rooms)
-        .deleteOne({ _id: objectRoomId }, { session });
-      console.log(`${deleteRoomRes.deletedCount} document was deleted in the rooms collection`)
-      //Remove and user
-      const deleteMembersRes = await db
+      //Check member
+      const memberData = await db
         .collection(collectionNames.members)
-        .deleteMany({ roomId: objectRoomId }, { session });
-      console.log(`${deleteMembersRes.deletedCount} document was deleted in the members collection`)
-      //Delete all message
-      const deleteMessagesRes = await db
-        .collection(collectionNames.messages)
-        .deleteMany({ roomId }, { session });
-      console.log(`${deleteMessagesRes.deletedCount} document was deleted in the messages collection`)
-      finalResult.message = `delete this room success!`;
-      //Create success logs
-      saveSuccessLog(ticket, args, chat_room_delete.name, finalResult.message, clientIp)
+        .findOne(
+          { $and: [{ roomId: objectRoomId }, { slug: memberSlug }] },
+          { session }
+        );
+      // console.log({ memberData });
+      if (!memberData) {
+        console.log(`1 document was found in the members collection`)
+        throw new Error("CA:026")
+      }
+      console.log(`0 document was found in the members collection`)
+      //Check master
+      if (memberData.role === MemberRole.master.name) throw new Error("CA:046")
+      //Delete member document
+      const { deletedCount } = await db
+        .collection(collectionNames.members)
+        .deleteOne({ _id: memberData._id }, { session });
+      console.log(`${deletedCount} document was deleted in the members collection`)
+      //Update room document
+      const { modifiedCount } = await db
+        .collection(collectionNames.rooms)
+        .updateOne(
+          { _id: objectRoomId },
+          { $inc: { totalMembers: -1 } },
+          { session }
+        );
+      console.log(`${modifiedCount} document was updated in the room collection. Field change = totalMembers`)
+      const listenData = {
+        roomId: roomId.toString(),
+        content: `${memberSlug} leave this room`,
+      };
+      pubsub.publish(LISTEN_CHANEL, { room_listen: listenData });
+      finalResult = {
+        message: `leave new room success!`,
+        data: memberData,
+      };
     }, transactionOptions);
 
+    //Create success logs
+    saveSuccessLog(ticket, args, chat_api_user_room_leave.name, finalResult.message, clientIp)
     return finalResult
   } catch (e) {
     //Create error logs
@@ -83,7 +102,7 @@ const chat_room_delete = async (
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_room_delete.name, errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_api_user_room_leave.name, errorResult, clientIp)
 
     if (session.inTransaction()) {
       await session.abortTransaction();
@@ -99,4 +118,4 @@ const chat_room_delete = async (
     session.endSession()
   }
 };
-export { chat_room_delete };
+

@@ -13,7 +13,7 @@ import {
 import { CaptureException } from "../../../sentry";
 import { checkRoomIdInMongoInMutation, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
-const chat_room_remove_block = async (
+export const chat_api_user_room_unblock = async (
   root: any,
   args: any,
   ctx: any
@@ -25,7 +25,7 @@ const chat_room_remove_block = async (
   const session = client.startSession();
   try {
     //Create request log
-    saveRequestLog(ticket, args, chat_room_remove_block.name,  clientIp)
+    saveRequestLog(ticket, args, chat_api_user_room_unblock.name,  clientIp)
     console.log("======ROOM REMOVE BLOCK=====");
     //Get arguments
     console.log({ args });
@@ -82,7 +82,7 @@ const chat_room_remove_block = async (
     }, transactionOptions);
    
     //Create success logs
-    saveSuccessLog(ticket, args, chat_room_remove_block.name,  finalResult.message, clientIp)
+    saveSuccessLog(ticket, args, chat_api_user_room_unblock.name,  finalResult.message, clientIp)
     return finalResult
   } catch (e) {
     //Create error logs
@@ -91,7 +91,7 @@ const chat_room_remove_block = async (
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_room_remove_block.name, errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_api_user_room_unblock.name, errorResult, clientIp)
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
@@ -107,4 +107,3 @@ const chat_room_remove_block = async (
   }
 };
 
-export { chat_room_remove_block };

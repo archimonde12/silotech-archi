@@ -6,7 +6,7 @@ import { client, collectionNames, db, transactionOptions } from "../../../mongo"
 import { CaptureException } from "../../../sentry";
 import { checkUsersInDatabase, createCheckFriendQuery, getSlugByToken, saveErrorLog, saveRequestLog, saveSuccessLog } from "../../../utils";
 
-const chat_friend_send_request = async (
+export const chat_api_user_friend_request_send = async (
   root: any,
   args: any,
   ctx: any
@@ -20,7 +20,7 @@ const chat_friend_send_request = async (
 
     //Create request log
 
-    saveRequestLog(ticket, args, chat_friend_send_request.name, clientIp)
+    saveRequestLog(ticket, args, chat_api_user_friend_request_send.name, clientIp)
 
     //Get arguments
 
@@ -89,7 +89,7 @@ const chat_friend_send_request = async (
       console.log(`1 new document was inserted to friends collection`)
       finalResult.message = `${senderSlug} sent a friend request to ${receiverSlug}!`
       //Create success logs
-      saveSuccessLog(ticket, args, chat_friend_send_request.name, finalResult.message, clientIp)
+      saveSuccessLog(ticket, args, chat_api_user_friend_request_send.name, finalResult.message, clientIp)
     }, transactionOptions)
     return finalResult
   } catch (e) {
@@ -99,7 +99,7 @@ const chat_friend_send_request = async (
       message: e.message,
       stack: e.stack
     })
-    saveErrorLog(ticket, args, chat_friend_send_request.name, errorResult, clientIp)
+    saveErrorLog(ticket, args, chat_api_user_friend_request_send.name, errorResult, clientIp)
 
     if (session.inTransaction()) {
       await session.abortTransaction();
@@ -115,4 +115,3 @@ const chat_friend_send_request = async (
     session.endSession()
   }
 };
-export { chat_friend_send_request };
